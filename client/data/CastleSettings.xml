@@ -11,4 +11,10 @@
     reference_width="1600"
     reference_height="900"
   />
+  <default_font
+    url="castle-data:/DejaVuSans.ttf"
+    size="20"
+    sizes_at_load="20 30 40 60"
+    anti_aliased="true"
+  />
 </castle_settings>

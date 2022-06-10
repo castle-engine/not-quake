@@ -60,3 +60,7 @@ Compile by entering `client` or `server` and build by:
 use speed predictions
 show proper anims based on speed
 use anim transition
+
+test on windows
+macos
+android
