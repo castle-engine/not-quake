@@ -1,4 +1,41 @@
-{$ifdef MSWINDOWS} {$apptype CONSOLE} {$endif}
+{
+  Copyright 2022-2022 Michalis Kamburelis, Benjamin Rosseaux.
+
+  This file is part of "Not Quake".
+
+  "Not Quake" is free software; see the file LICENSE,
+  included in this distribution, for details about the copyright.
+
+  "Not Quake" is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+  ----------------------------------------------------------------------------
+}
+
+{ Game-specific client. Based on RNL example. }
+unit GameClient;
+
+interface
+
+uses NetworkCommon;
+
+type
+  TClient=class(TNetworkingThread)
+  protected
+    procedure Execute; override;
+  end;
+
+var
+  HostAddress: String = '127.0.0.1';
+    // = 'michalis.xyz';
+
+  Client: TClient;
+
+procedure NetworkInitialize;
+procedure NetworkFinish;
+
+implementation
 
 uses
   {$ifdef unix}
@@ -7,14 +44,7 @@ uses
   SysUtils,
   Classes,
   SyncObjs,
-  NetworkCommon,
   RNL;
-
-type
-  TClient=class(TNetworkingThread)
-  protected
-    procedure Execute; override;
-  end;
 
 var
   RNLInstance:TRNLInstance=nil;
@@ -28,8 +58,6 @@ var Address:TRNLAddress;
     Peer:TRNLPeer;
     Disconnected:boolean;
 const
-  HostAddress = '127.0.0.1';
-  //HostAddress = 'michalis.xyz';
   { Decrease to send our messages, and check for received messages, more often.
     Value = 0 is OK: RNL code says it will do then "one iteration without waiting". }
   NormalTimeout = 10;
@@ -169,34 +197,24 @@ begin
  ConsoleOutput('Client: Thread stopped');
 end;
 
-var
-  Client:TClient;
-  Command: String;
+procedure NetworkInitialize;
 begin
   RNLInstance:=TRNLInstance.Create;
-  try
-    RNLNetwork:={$ifdef VirtualNetwork}TRNLVirtualNetwork{$else}TRNLRealNetwork{$endif}.Create(RNLInstance);
-    try
-      Client:=TClient.Create(false);
-      try
-        readln(Command);
-        while Command <> 'q' do
-        begin
-          Client.SendMessage(-1, Command);
-          readln(Command);
-          // TODO: test test id
-          // TODO: receive msgs in main thread
-        end;
-      finally
-        Client.Terminate;
-        Client.WaitFor;
-        LogThreadException('Client',Client.FatalException);
-        Client.Free;
-      end;
-    finally
-      FreeAndNil(RNLNetwork);
-    end;
-  finally
-    FreeAndNil(RNLInstance);
+  RNLNetwork:={$ifdef VirtualNetwork}TRNLVirtualNetwork{$else}TRNLRealNetwork{$endif}.Create(RNLInstance);
+  Client:=TClient.Create(false);
+end;
+
+procedure NetworkFinish;
+begin
+  if Client <> nil then
+  begin
+    Client.Terminate;
+    Client.WaitFor;
+    LogThreadException('Client',Client.FatalException);
+    Client.Free;
   end;
+  FreeAndNil(RNLNetwork);
+  FreeAndNil(RNLInstance);
+end;
+
 end.
