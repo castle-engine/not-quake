@@ -55,6 +55,8 @@ var
 
   LocalPlayer: TPlayer;
 
+procedure InitializeAvatar;
+
 implementation
 
 uses SysUtils,
@@ -130,10 +132,13 @@ begin
   Result := P;
 end;
 
-initialization
+procedure InitializeAvatar;
+begin
   { Reading it once is not only an optimization, it also prevents problems when testing locally
     and multiple clients try to read the same file. }
   AvatarRoot := LoadNode('castle-data:/avatar/avatar.gltf');
+end;
+
 finalization
   FreeAndNil(AvatarRoot);
 end.

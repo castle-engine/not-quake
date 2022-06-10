@@ -27,8 +27,7 @@ type
   end;
 
 var
-  HostAddress: String = '127.0.0.1';
-    // = 'michalis.xyz';
+  HostAddress: String = 'michalis.xyz';
 
   Client: TClient;
 

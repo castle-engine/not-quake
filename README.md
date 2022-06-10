@@ -14,11 +14,34 @@ Client keys:
 
 - `Left click` to shoot
 
+Done for gamejam in Cat-astrophe Games on 2022-06-10. Plans: https://docs.google.com/document/d/18TMnuJfNZQVhCodwymMnAqt9yUw5070KzoEyz8LA204/edit?usp=sharing
+
 ## Code
 
-Checkout with submodules, `git clone --recurse-submodules https://github.com/castle-engine/not-quake`
+Checkout with submodules.
 
-Done for gamejam in Cat-astrophe Games on 2022-06-10. Plans: https://docs.google.com/document/d/18TMnuJfNZQVhCodwymMnAqt9yUw5070KzoEyz8LA204/edit?usp=sharing
+```
+git clone --recurse-submodules https://github.com/castle-engine/not-quake
+```
+
+Build and run server:
+
+```
+cd not-quake/server/
+castle-engine compile --mode=release
+castle-engine run # or just ./not-quake-server
+```
+
+Build and run client:
+
+```
+cd not-quake/client/
+castle-engine compile --mode=release
+castle-engine run -- --host localhost
+  # or just ./not-quake --host localhost
+```
+
+By default it connects to server on `michalis.xyz` (Michalis Kamburelis private host, see https://michalis.xyz/ ) which I will try to keep running for some time. Ping me (find me on Discord, https://castle-engine.io/talk.php ) if the server seems to be down :)
 
 Using [Castle Game Engine](https://castle-engine.io/).
 

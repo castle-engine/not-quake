@@ -23,7 +23,8 @@ interface
 implementation
 
 uses SysUtils,
-  CastleWindow, CastleLog, CastleUIState
+  CastleWindow, CastleLog, CastleUIState, CastleParameters, CastleUtils,
+  GamePlayers, GameClient
   {$region 'Castle Initialization Uses'}
   // The content here may be automatically updated by CGE editor.
   , GameStateMainMenu
@@ -34,9 +35,28 @@ uses SysUtils,
 var
   Window: TCastleWindow;
 
+const
+  Options: array [0..0] of TOption =
+  (
+    (Short: #0 ; Long: 'host'; Argument: oaRequired)
+  );
+
+procedure OptionProc(OptionNum: Integer; HasArgument: boolean;
+  const Argument: string; const SeparateArgs: TSeparateArgs; Data: Pointer);
+begin
+  case OptionNum of
+    0: HostAddress := Argument;
+    else raise EInternalError.Create('OptionProc');
+  end;
+end;
+
 { One-time initialization of resources. }
 procedure ApplicationInitialize;
 begin
+  Parameters.Parse(Options, @OptionProc, nil, true);
+
+  InitializeAvatar;
+
   { Adjust container settings for a scalable UI (adjusts to any window size in a smart way). }
   Window.Container.LoadSettings('castle-data:/CastleSettings.xml');
 
