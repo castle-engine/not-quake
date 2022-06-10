@@ -1,0 +1,108 @@
+# ----------------------------------------------------------------------------
+# Modified GH Actions to use
+# - new-cameras branch
+# - build client and server for not-quake.
+#
+# See https://docs.github.com/en/actions for docs.
+# ----------------------------------------------------------------------------
+
+name: Build
+on: [push]
+
+jobs:
+  # Build for platforms supported by
+  # CGE Docker image https://hub.docker.com/r/kambi/castle-engine-cloud-builds-tools/ .
+  #
+  # Since setting up Docker image takes majority of time (5-6 mins)
+  # compared to actually getting and compiling CGE (1 min)
+  # and building application (~1 min for each platform),
+  # we build all platforms possible within one job.
+  build-using-docker:
+    name: Build Using Docker
+    runs-on: ubuntu-latest
+    container: kambi/castle-engine-cloud-builds-tools:cge-none
+    steps:
+      - uses: actions/checkout@v2
+      # Set env CASTLE_ENGINE_PATH following
+      # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#environment-files
+      # https://brandur.org/fragments/github-actions-env-vars-in-env-vars
+      - name: Castle Game Engine - Setup environment
+        run: echo "CASTLE_ENGINE_PATH=$GITHUB_WORKSPACE/castle-engine" >> $GITHUB_ENV
+      - name: Castle Game Engine - Clone
+        run: git clone --depth 1 --single-branch --branch new-cameras https://github.com/castle-engine/castle-engine/
+      - name: Castle Game Engine - Build
+        run: cd $CASTLE_ENGINE_PATH/tools/build-tool/ && ./castle-engine_compile.sh
+
+      - name: Package Windows Client
+        run: cd rnl-first-cge-example/client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=win64 --cpu=x86_64 --verbose
+      - name: Package Windows Server
+        run: cd rnl-first-cge-example/server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=win64 --cpu=x86_64 --verbose
+      - name: Archive Artifacts
+        # See https://github.com/actions/upload-artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-build
+          # Note: Keep paths that start with asterisk in double qoutes, to avoid misinterpreting as YAML reference.
+          # See https://stackoverflow.com/questions/19109912/yaml-do-i-need-quotes-for-strings-in-yaml
+          # https://yamlchecker.com/
+          path: |
+            "rnl-first-cge-example/client/*-win64-x86_64.zip"
+            "rnl-first-cge-example/server/*-win64-x86_64.zip"
+          if-no-files-found: error
+
+      - name: Package Linux Client
+        run: cd rnl-first-cge-example/client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=linux --cpu=x86_64 --verbose
+      - name: Package Linux Server
+        run: cd rnl-first-cge-example/server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=linux --cpu=x86_64 --verbose
+      - name: Archive Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-build
+          path: |
+            "rnl-first-cge-example/client/*-linux-x86_64.tar.gz"
+            "rnl-first-cge-example/server/*-linux-x86_64.tar.gz"
+          if-no-files-found: error
+
+      - name: Package Android Client
+        run: cd rnl-first-cge-example/client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --target=android --verbose
+      - name: Package Android Server
+        run: cd rnl-first-cge-example/server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --target=android --verbose
+      - name: Archive Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-build
+          path: |
+            "rnl-first-cge-example/client/*.apk"
+            "rnl-first-cge-example/server/*.apk"
+          if-no-files-found: error
+
+  # Build for platforms supported from macOS.
+  # This means to build for macOS and (maybe in the future) iOS.
+  build-macos:
+    name: Build Using macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install FPC+Lazarus
+        uses: gcarreno/setup-lazarus@v3.0.16
+        with:
+          lazarus-version: stable
+      - name: Castle Game Engine - Setup environment
+        run: echo "CASTLE_ENGINE_PATH=$GITHUB_WORKSPACE/castle-engine" >> $GITHUB_ENV
+      - name: Castle Game Engine - Clone
+        run: git clone --depth 1 --single-branch --branch new-cameras https://github.com/castle-engine/castle-engine/
+      - name: Castle Game Engine - Build
+        run: cd $CASTLE_ENGINE_PATH/tools/build-tool/ && ./castle-engine_compile.sh
+
+      - name: Package macOS Client
+        run: cd rnl-first-cge-example/client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=darwin --cpu=x86_64 --verbose
+      - name: Package macOS Server
+        run: cd rnl-first-cge-example/server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=darwin --cpu=x86_64 --verbose
+      - name: Archive Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-build
+          path: |
+            "rnl-first-cge-example/client/*.app"
+            "rnl-first-cge-example/server/*.app"
+          if-no-files-found: error
