@@ -4,6 +4,8 @@ Online first-person shooter using Castle Game Engine and RNL.
 
 Checkout with submodules, `git clone --recurse-submodules https://github.com/castle-engine/not-quake`
 
+Done for gamejam in Cat-astrophe Games on 2022-06-10. Plans: https://docs.google.com/document/d/18TMnuJfNZQVhCodwymMnAqt9yUw5070KzoEyz8LA204/edit?usp=sharing
+
 Using [Castle Game Engine](https://castle-engine.io/).
 
 ## Building
