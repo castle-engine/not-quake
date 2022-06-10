@@ -61,8 +61,8 @@ jobs:
         with:
           name: linux-build
           path: |
-            "client/*-linux-x86_64.tar.gz"
-            "server/*-linux-x86_64.tar.gz"
+            client/*-linux-x86_64.tar.gz
+            server/*-linux-x86_64.tar.gz
           if-no-files-found: error
 
       - name: Package Android Client
@@ -74,8 +74,8 @@ jobs:
         with:
           name: android-build
           path: |
-            "client/*.apk"
-            "server/*.apk"
+            client/*.apk
+            server/*.apk
           if-no-files-found: error
 
   # Build for platforms supported from macOS.
@@ -107,6 +107,6 @@ jobs:
         with:
           name: macos-build
           path: |
-            "client/*.app"
-            "server/*.app"
+            client/*.app
+            server/*.app
           if-no-files-found: error
