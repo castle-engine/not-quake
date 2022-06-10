@@ -95,6 +95,8 @@ procedure TStatePlay.Start;
     Client.SendMessage(MJ, true, -1);
   end;
 
+const
+  RandomSpawn = 5;
 begin
   inherited;
   { Find components, by name, that we need to access from code }
@@ -103,6 +105,13 @@ begin
   MainViewport := DesignedComponent('MainViewport') as TCastleViewport;
   WalkNavigation := DesignedComponent('WalkNavigation') as TCastleWalkNavigation;
   LabelControls := DesignedComponent('LabelControls') as TCastleLabel;
+
+  { avoid spawning everyone at same position }
+  MainViewport.Camera.Translation := MainViewport.Camera.Translation + Vector3(
+    RandomFloatRange(-RandomSpawn, RandomSpawn),
+    0,
+    RandomFloatRange(-RandomSpawn, RandomSpawn)
+  );
 
   NetworkInitialize;
   OnNetworkLog := {$ifdef FPC}@{$endif} NetworkLog;
