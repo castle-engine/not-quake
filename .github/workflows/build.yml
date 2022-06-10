@@ -23,6 +23,8 @@ jobs:
     container: kambi/castle-engine-cloud-builds-tools:cge-none
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       # Set env CASTLE_ENGINE_PATH following
       # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#environment-files
       # https://brandur.org/fragments/github-actions-env-vars-in-env-vars
@@ -83,6 +85,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Install FPC+Lazarus
         uses: gcarreno/setup-lazarus@v3.0.16
         with:
