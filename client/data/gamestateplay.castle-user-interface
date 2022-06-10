@@ -326,6 +326,7 @@
         "Escape - mouse look toggle",
         "CtrlQ - back to main menu",
         "AWSD, arrows - move, rotate",
+        "Shift - run",
         "Left click - shoot",
         "F1 - toggle this information"
       ],

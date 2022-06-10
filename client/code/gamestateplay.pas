@@ -39,6 +39,7 @@ type
     LastBroadcastState: TTimerResult;
     LastPing: TTimerResult;
     LastNickJoined: String;
+    LastStateSend: TTimerResult;
     HitFlash: TCastleFlashEffect;
 
     procedure NetworkLog(const Message: String);
@@ -141,7 +142,7 @@ begin
   LocalPlayer.Life := MaxLife;
   LocalPlayer.Position := CameraPositionToSend(MainViewport.Camera);
   LocalPlayer.Direction := CameraDirectionToSend(MainViewport.Camera);
-  // TODO: rest of TPlayer fill
+  // leave PositionDelta, DirectionDelta at zero
 
   Players := TPlayerList.Create;
   Players.Add(LocalPlayer);
@@ -166,13 +167,35 @@ procedure TStatePlay.Update(const SecondsPassed: Single; var HandleInput: Boolea
   procedure SendPlayerState;
   var
     M: TMessagePlayerState;
+    NewPos, NewDir: TVector3;
   begin
+    NewPos := CameraPositionToSend(MainViewport.Camera);
+    NewDir := CameraDirectionToSend(MainViewport.Camera);
+
+    if LastStateSend.Initialized and
+      (LastStateSend.ElapsedTime > SingleEpsilon) then
+    begin
+      LocalPlayer.PositionDelta := (NewPos - LocalPlayer.Position) / LastStateSend.ElapsedTime;
+      LocalPlayer.DirectionDelta := (NewDir - LocalPlayer.Direction) / LastStateSend.ElapsedTime;
+    end else
+    begin
+      LocalPlayer.PositionDelta := TVector3.Zero;
+      LocalPlayer.DirectionDelta := TVector3.Zero;
+    end;
+
+    LocalPlayer.Position := NewPos;
+    LocalPlayer.Direction := NewDir;
+
     M := TMessagePlayerState.Create;
     M.PlayerId := LocalPlayer.PlayerId;
-    M.Position := CameraPositionToSend(MainViewport.Camera);
-    M.Direction := CameraDirectionToSend(MainViewport.Camera);
     M.Life := LocalPlayer.Life;
+    M.Position := NewPos;
+    M.Direction := NewDir;
+    M.PositionDelta := LocalPlayer.PositionDelta;
+    M.DirectionDelta := LocalPlayer.DirectionDelta;
     Client.SendMessage(M, true, -1);
+
+    LastStateSend := Timer;
   end;
 
   procedure SendPing;

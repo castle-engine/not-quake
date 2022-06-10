@@ -19,7 +19,7 @@ unit GamePlayers;
 interface
 
 uses Generics.Collections,
-  CastleVectors, CastleTransform, CastleViewport, CastleScene,
+  CastleVectors, CastleTransform, CastleViewport, CastleScene, CastleTimeUtils,
   GameNetwork;
 
 type
@@ -27,6 +27,7 @@ type
   strict private
     Scene: TCastleScene;
     Text: TCastleText;
+    LastAnimChange: TTimerResult;
   public
     PlayerId: TPlayerId;
     Nick: String;
@@ -81,7 +82,9 @@ begin
 
   Scene := TCastleScene.Create(Transform);
   Scene.Load(AvatarRoot.DeepCopy as TX3DRootNode, true);
-  Scene.PlayAnimation('idle', true);
+  Scene.AutoAnimationLoop := true;
+  Scene.AutoAnimation := 'idle';
+  Scene.DefaultAnimationTransition := 0.1;
   Scene.Collides := false; // do not collide with other players
   Transform.Add(Scene);
 
@@ -103,8 +106,16 @@ begin
 end;
 
 procedure TPlayer.UpdateTransform;
+const
+  MinSpeedToWalk = 0.01;
+  { Do not set this to be equal to WalkNavigation.MoveSpeed (5 now),
+    as it would mean animation flips walk/run randomly. }
+  MinSpeedToRun = 7.5;
+  TimeToAllowAnimChange = 0.25; // a bit larger than Scene.DefaultAnimationTransition
 var
   Alive: Boolean;
+  Speed: Single;
+  NewAnimation: String;
 begin
   if Transform = nil then // LocalPlayer has transform nil
     Exit;
@@ -117,6 +128,23 @@ begin
     Transform.Translation := Position;
     Transform.Direction := Direction;
     Text.Caption := Nick + Format(' (%d)', [Life]);
+
+    Speed := PositionDelta.Length;
+    if Speed > MinSpeedToRun then
+      NewAnimation := 'run'
+    else
+    if Speed > MinSpeedToWalk then
+      NewAnimation := 'walk'
+    else
+      NewAnimation := 'idle';
+
+    if (Scene.AutoAnimation <> NewAnimation) and
+       ( (not LastAnimChange.Initialized) or
+         (LastAnimChange.ElapsedTime > TimeToAllowAnimChange) ) then
+    begin
+      Scene.AutoAnimation := NewAnimation;
+      LastAnimChange := Timer;
+    end;
   end;
 end;
 
