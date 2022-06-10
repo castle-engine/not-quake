@@ -40,8 +40,13 @@ type
 
   TMessagePlayerState = class(TMessage)
   public
+    PlayerId: TPlayerId;
     Position, PositionDelta: TVector3;
-    Rotation, RotationDelta: Single;
+    { Although we only really allow rotation in 2D, single float,
+      but it's easier to pass whole and not care whether the rotation axis is +y or -y.
+      Actually passing Direction is best -- it maps between TCastleCamera and TCastleTransform
+      as expected. }
+    Direction, DirectionDelta: TVector3;
     Life: Byte;
     class function TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerState;
     procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
@@ -213,8 +218,9 @@ const
 type
   TRecPlayerState = packed record
     MessageId: Int32;
+    PlayerId: TPlayerId;
     Position, PositionDelta: TVector3;
-    Rotation, RotationDelta: Single;
+    Direction, DirectionDelta: TVector3;
     Life: Byte;
   end;
   PRecPlayerState = ^TRecPlayerState;
@@ -230,11 +236,12 @@ begin
     if Rec.MessageId = IdPlayerState then
     begin
       Result := TMessagePlayerState.Create;
-      Result.Position      := Rec.Position;
-      Result.PositionDelta := Rec.PositionDelta;
-      Result.Rotation      := Rec.Rotation;
-      Result.RotationDelta := Rec.RotationDelta;
-      Result.Life          := Rec.Life;
+      Result.PlayerId       := Rec.PlayerId;
+      Result.Position       := Rec.Position;
+      Result.PositionDelta  := Rec.PositionDelta;
+      Result.Direction      := Rec.Direction;
+      Result.DirectionDelta := Rec.DirectionDelta;
+      Result.Life           := Rec.Life;
     end;
   end
 end;
@@ -244,11 +251,12 @@ var
   Rec: TRecPlayerState;
 begin
   Rec.MessageId := IdPlayerState;
-  Rec.Position      := Position;
-  Rec.PositionDelta := PositionDelta;
-  Rec.Rotation      := Rotation;
-  Rec.RotationDelta := RotationDelta;
-  Rec.Life          := Life;
+  Rec.PlayerId       := PlayerId;
+  Rec.Position       := Position;
+  Rec.PositionDelta  := PositionDelta;
+  Rec.Direction      := Direction;
+  Rec.DirectionDelta := DirectionDelta;
+  Rec.Life           := Life;
   RnlChannel.SendMessageData(@Rec, SizeOf(Rec));
 end;
 

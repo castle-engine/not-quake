@@ -20,7 +20,7 @@ interface
 
 uses Classes,
   CastleVectors, CastleUIState, CastleUIControls, CastleControls, CastleKeysMouse,
-  CastleViewport, CastleTimeUtils, CastleCameras;
+  CastleViewport, CastleTimeUtils, CastleCameras, CastleTransform;
 
 type
   TStatePlay = class(TUIState)
@@ -37,6 +37,8 @@ type
     LastNickJoined: String;
 
     procedure NetworkLog(const Message: String);
+    function CameraPositionToSend(const Camera: TCastleCamera): TVector3;
+    function CameraDirectionToSend(const Camera: TCastleCamera): TVector3;
   public
     PlayerNick: String; //< Set before starting state
     constructor Create(AOwner: TComponent); override;
@@ -54,13 +56,25 @@ var
 implementation
 
 uses SysUtils,
-  CastleStringUtils, CastleLog,
+  CastleStringUtils, CastleLog, CastleUtils,
   GameClient, NetworkCommon, GameStateMainMenu, GameStateInputChat, GamePlayers;
 
 constructor TStatePlay.Create(AOwner: TComponent);
 begin
   inherited;
   DesignUrl := 'castle-data:/gamestateplay.castle-user-interface';
+end;
+
+function TStatePlay.CameraPositionToSend(const Camera: TCastleCamera): TVector3;
+begin
+  Result := Camera.WorldTranslation - Vector3(0, TCastleWalkNavigation.DefaultPreferredHeight, 0); // calculate legs position
+end;
+
+function TStatePlay.CameraDirectionToSend(const Camera: TCastleCamera): TVector3;
+begin
+  Result := Camera.Direction;
+  if not VectorsParallel(Result, Camera.GravityUp) then
+    MakeVectorsOrthoOnTheirPlane(Result, Camera.GravityUp);
 end;
 
 procedure TStatePlay.Start;
@@ -103,7 +117,8 @@ begin
   LocalPlayer.PlayerId := Random(1000 * 1000 * 1000); // TODO: we just assume everyone will choose different id
   LocalPlayer.Nick := PlayerNick;
   LocalPlayer.Life := 10;
-  LocalPlayer.Position := MainViewport.Camera.WorldTranslation;
+  LocalPlayer.Position := CameraPositionToSend(MainViewport.Camera);
+  LocalPlayer.Direction := CameraDirectionToSend(MainViewport.Camera);
   // TODO: rest of TPlayer fill
 
   Players := TPlayerList.Create;
@@ -131,12 +146,14 @@ procedure TStatePlay.Update(const SecondsPassed: Single; var HandleInput: Boolea
     M: TMessagePlayerState;
   begin
     M := TMessagePlayerState.Create;
-    M.Position := MainViewport.Camera.WorldTranslation;
+    M.PlayerId := LocalPlayer.PlayerId;
+    M.Position := CameraPositionToSend(MainViewport.Camera);
+    M.Direction := CameraDirectionToSend(MainViewport.Camera);
     Client.SendMessage(M, true, -1);
   end;
 
 const
-  BroadcastStateTimeout = 0.1;
+  BroadcastStateTimeout = 0.01;
 var
   M: TMessage;
   NewPlayer, OldPlayer: TPlayer;
@@ -179,9 +196,23 @@ begin
             TMessagePlayerDisconnect(M).PlayerId
           ]);
       end else
+      if M is TMessagePlayerState then
       begin
-        // TODO update player info
-        //NetworkLog('Received unhandled message: ' + M.ClassName);
+        OldPlayer := Players.FindPlayerId(TMessagePlayerState(M).PlayerId);
+        if OldPlayer <> nil then
+        begin
+          OldPlayer.Position := TMessagePlayerState(M).Position;
+          OldPlayer.PositionDelta := TMessagePlayerState(M).PositionDelta;
+          OldPlayer.Direction := TMessagePlayerState(M).Direction;
+          OldPlayer.DirectionDelta := TMessagePlayerState(M).DirectionDelta;
+          OldPlayer.UpdateTransform;
+        end else
+          WritelnWarning('Cannot find player id sending state %d', [
+            TMessagePlayerState(M).PlayerId
+          ]);
+      end else
+      begin
+        NetworkLog('Received unhandled message: ' + M.ClassName);
       end;
     end;
     Client.Received.Clear;

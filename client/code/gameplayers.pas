@@ -27,11 +27,12 @@ type
     PlayerId: TPlayerId;
     Nick: String;
     Position, PositionDelta: TVector3;
-    Rotation, RotationDelta: Single;
+    Direction, DirectionDelta: TVector3;
     Life: Byte;
     Transform: TCastleTransform;
-    procedure CreateTransform(const Viewport: TCastleViewport);
     destructor Destroy; override;
+    procedure CreateTransform(const Viewport: TCastleViewport);
+    procedure UpdateTransform;
   end;
 
   TPlayerList = class({$ifdef FPC}specialize{$endif} TObjectList<TPlayer>)
@@ -67,11 +68,12 @@ var
   Text: TCastleText;
 begin
   Transform := TCastleTransform.Create(Viewport);
-  Transform.Translation := Position;
+  UpdateTransform;
 
   Scene := TCastleScene.Create(Transform);
   Scene.Load(AvatarRoot.DeepCopy as TX3DRootNode, true);
   Scene.PlayAnimation('idle', true);
+  Scene.Collides := false; // do not collide with other players
   Transform.Add(Scene);
 
   Text := TCastleText.Create(Transform);
@@ -80,9 +82,16 @@ begin
   Text.Alignment := hpMiddle;
   Text.Size := 0.1;
   Text.Color := Blue;
+  Text.Collides := false;
   Transform.Add(Text);
 
   Viewport.Items.Add(Transform);
+end;
+
+procedure TPlayer.UpdateTransform;
+begin
+  Transform.Translation := Position;
+  Transform.Direction := Direction;
 end;
 
 { TPlayerList ---------------------------------------------------------------- }
