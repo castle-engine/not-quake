@@ -29,6 +29,7 @@ type
     LabelFps: TCastleLabel;
     LabelNetworkLog: TCastleLabel;
     LabelControls: TCastleLabel;
+    LabelPing: TCastleLabel;
     MainViewport: TCastleViewport;
     WalkNavigation: TCastleWalkNavigation;
     LifeBar: TCastleRectangleControl;
@@ -36,6 +37,7 @@ type
 
     WaitingForChat: Boolean;
     LastBroadcastState: TTimerResult;
+    LastPing: TTimerResult;
     LastNickJoined: String;
     HitFlash: TCastleFlashEffect;
 
@@ -60,7 +62,7 @@ implementation
 
 uses SysUtils,
   CastleStringUtils, CastleLog, CastleUtils, CastleColors,
-  GameClient, NetworkCommon, GameStateMainMenu, GameStateInputChat, GamePlayers;
+  GameClient, GameNetwork, GameStateMainMenu, GameStateInputChat, GamePlayers;
 
 constructor TStatePlay.Create(AOwner: TComponent);
 begin
@@ -110,6 +112,7 @@ begin
   LabelControls := DesignedComponent('LabelControls') as TCastleLabel;
   LifeBar := DesignedComponent('LifeBar') as TCastleRectangleControl;
   RectDead := DesignedComponent('RectDead') as TCastleRectangleControl;
+  LabelPing := DesignedComponent('LabelPing') as TCastleLabel;
 
   { avoid spawning everyone at same position }
   MainViewport.Camera.Translation := MainViewport.Camera.Translation + Vector3(
@@ -129,6 +132,8 @@ begin
   LastNickJoined := '';
   // TODO: LastBroadcastState := TTimerResult.Uninitialized;
   FillChar(LastBroadcastState, SizeOf(LastBroadcastState), 0);
+  // TODO: LastPing := TTimerResult.Uninitialized;
+  FillChar(LastPing, SizeOf(LastPing), 0);
 
   LocalPlayer := TPlayer.Create;
   LocalPlayer.PlayerId := Random(1000 * 1000 * 1000); // TODO: we just assume everyone will choose different id
@@ -170,13 +175,77 @@ procedure TStatePlay.Update(const SecondsPassed: Single; var HandleInput: Boolea
     Client.SendMessage(M, true, -1);
   end;
 
-  { TODO: all messages should be processed by HandleXxx }
+  procedure SendPing;
+  var
+    M: TMessagePing;
+  begin
+    M := TMessagePing.Create;
+    M.ClientSendTime := Timer;
+    Client.SendMessage(M, true, -1);
+  end;
+
+  procedure HandleChat(const M: TMessageChat);
+  begin
+    NetworkLog('Chat: ' + M.Text);
+    if IsSuffix(SJoinsSuffix, M.Text, false) then
+      LastNickJoined := SuffixRemove(SJoinsSuffix, M.Text, false);
+  end;
+
+  procedure HandlePlayerJoin(const M: TMessagePlayerJoin);
+  var
+    NewPlayer: TPlayer;
+  begin
+    NewPlayer := TPlayer.Create;
+    NewPlayer.Nick := LastNickJoined;
+    NewPlayer.PlayerId := M.PlayerId;
+    NewPlayer.CreateTransform(MainViewport);
+    NewPlayer.Life := MaxLife; // will be updated by TMessagePlayerState
+    Players.Add(NewPlayer);
+    WritelnLog('Joined player %s (%d)', [
+      NewPlayer.Nick,
+      NewPlayer.PlayerId
+    ]);
+  end;
+
+  procedure HandlePlayerDisconnect(const M: TMessagePlayerDisconnect);
+  var
+    OldPlayer: TPlayer;
+  begin
+    OldPlayer := Players.FindPlayerId(M.PlayerId);
+    if OldPlayer <> nil then
+    begin
+      NetworkLog(Format('%s disconnected', [OldPlayer.Nick]));
+      Players.Remove(OldPlayer); // TODO remove by index, faster
+    end else
+      WritelnWarning('Cannot find disconnecting player id %d', [
+        M.PlayerId
+      ]);
+  end;
+
+  procedure HandlePlayerState(const M: TMessagePlayerState);
+  var
+    OldPlayer: TPlayer;
+  begin
+    OldPlayer := Players.FindPlayerId(M.PlayerId);
+    if OldPlayer <> nil then
+    begin
+      OldPlayer.Position := M.Position;
+      OldPlayer.PositionDelta := M.PositionDelta;
+      OldPlayer.Direction := M.Direction;
+      OldPlayer.DirectionDelta := M.DirectionDelta;
+      OldPlayer.Life := M.Life;
+      OldPlayer.UpdateTransform;
+    end else
+      WritelnWarning('Cannot find player id sending state %d', [
+        M.PlayerId
+      ]);
+  end;
 
   procedure HandleHit(const M: TMessagePlayerHit);
   var
     ShooterPlayer, HitPlayer: TPlayer;
   begin
-    HitPlayer := Players.FindPlayerId(TMessagePlayerHit(M).PlayerId);
+    HitPlayer := Players.FindPlayerId(M.PlayerId);
     if HitPlayer = nil then
     begin
       WritelnWarning('Cannot find player id being hit %d', [
@@ -185,7 +254,7 @@ procedure TStatePlay.Update(const SecondsPassed: Single; var HandleInput: Boolea
       Exit;
     end;
 
-    ShooterPlayer := Players.FindPlayerId(TMessagePlayerHit(M).ShooterPlayerId);
+    ShooterPlayer := Players.FindPlayerId(M.ShooterPlayerId);
     if ShooterPlayer = nil then
     begin
       WritelnWarning('Cannot find player id of shooter %d', [
@@ -211,11 +280,16 @@ procedure TStatePlay.Update(const SecondsPassed: Single; var HandleInput: Boolea
     end;
   end;
 
+  procedure HandlePing(const M: TMessagePing);
+  begin
+    LabelPing.Caption := Format('Ping (round-trip to server): %f', [M.ClientSendTime.ElapsedTime]);
+  end;
+
 const
   BroadcastStateTimeout = 0.01;
+  PingTimeout = 1.0;
 var
   M: TMessage;
-  NewPlayer, OldPlayer: TPlayer;
 begin
   inherited;
   LabelFps.Caption := 'FPS: ' + Container.Fps.ToString;
@@ -226,54 +300,22 @@ begin
     for M in Client.Received do
     begin
       if M is TMessageChat then
-      begin
-        NetworkLog('Chat: ' + TMessageChat(M).Text);
-        if IsSuffix(SJoinsSuffix, TMessageChat(M).Text, false) then
-          LastNickJoined := SuffixRemove(SJoinsSuffix, TMessageChat(M).Text, false);
-      end else
+        HandleChat(TMessageChat(M))
+      else
       if M is TMessagePlayerJoin then
-      begin
-        NewPlayer := TPlayer.Create;
-        NewPlayer.Nick := LastNickJoined;
-        NewPlayer.PlayerId := TMessagePlayerJoin(M).PlayerId;
-        NewPlayer.CreateTransform(MainViewport);
-        NewPlayer.Life := MaxLife; // will be updated by TMessagePlayerState
-        Players.Add(NewPlayer);
-        WritelnLog('Joined player %s (%d)', [
-          NewPlayer.Nick,
-          NewPlayer.PlayerId
-        ]);
-      end else
+        HandlePlayerJoin(TMessagePlayerJoin(M))
+      else
       if M is TMessagePlayerDisconnect then
-      begin
-        OldPlayer := Players.FindPlayerId(TMessagePlayerDisconnect(M).PlayerId);
-        if OldPlayer <> nil then
-        begin
-          NetworkLog(Format('%s disconnected', [OldPlayer.Nick]));
-          Players.Remove(OldPlayer); // TODO remove by index, faster
-        end else
-          WritelnWarning('Cannot find disconnecting player id %d', [
-            TMessagePlayerDisconnect(M).PlayerId
-          ]);
-      end else
+        HandlePlayerDisconnect(TMessagePlayerDisconnect(M))
+      else
       if M is TMessagePlayerState then
-      begin
-        OldPlayer := Players.FindPlayerId(TMessagePlayerState(M).PlayerId);
-        if OldPlayer <> nil then
-        begin
-          OldPlayer.Position := TMessagePlayerState(M).Position;
-          OldPlayer.PositionDelta := TMessagePlayerState(M).PositionDelta;
-          OldPlayer.Direction := TMessagePlayerState(M).Direction;
-          OldPlayer.DirectionDelta := TMessagePlayerState(M).DirectionDelta;
-          OldPlayer.Life := TMessagePlayerState(M).Life;
-          OldPlayer.UpdateTransform;
-        end else
-          WritelnWarning('Cannot find player id sending state %d', [
-            TMessagePlayerState(M).PlayerId
-          ]);
-      end else
+        HandlePlayerState(TMessagePlayerState(M))
+      else
       if M is TMessagePlayerHit then
         HandleHit(TMessagePlayerHit(M))
+      else
+      if M is TMessagePing then
+        HandlePing(TMessagePing(M))
       else
       begin
         NetworkLog('Received unhandled message: ' + M.ClassName);
@@ -287,6 +329,13 @@ begin
   begin
     SendPlayerState;
     LastBroadcastState := Timer;
+  end;
+
+  if (not LastPing.Initialized) or
+     (LastPing.ElapsedTime > PingTimeout) then
+  begin
+    SendPing;
+    LastPing := Timer;
   end;
 end;
 

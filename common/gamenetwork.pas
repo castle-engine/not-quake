@@ -1,11 +1,27 @@
-{ Common networking (RNL) code for client and server. }
-unit NetworkCommon;
+{
+  Copyright 2022-2022 Michalis Kamburelis, Benjamin Rosseaux.
+
+  This file is part of "Not Quake".
+
+  "Not Quake" is free software; see the file LICENSE,
+  included in this distribution, for details about the copyright.
+
+  "Not Quake" is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+  ----------------------------------------------------------------------------
+}
+
+{ Common networking code for client and server.
+  Portions based on RNL sample code. }
+unit GameNetwork;
 
 interface
 
 uses SysUtils, Classes, SyncObjs, Generics.Collections,
   RNL,
-  CastleLog, CastleApplicationProperties, CastleVectors;
+  CastleLog, CastleApplicationProperties, CastleVectors, CastleTimeUtils;
 
 { Call these from any thread (main or not) to report something. }
 procedure ConsoleOutput(const s:string);
@@ -60,6 +76,13 @@ type
     PlayerId: TPlayerId; //< TODO: rename to HitPlayerId
     ShooterPlayerId: TPlayerId;
     class function TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerHit;
+    procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
+  end;
+
+  TMessagePing = class(TMessage)
+  public
+    ClientSendTime: TTimerResult;
+    class function TryDeserialize(const RnlMessage: TRNLMessage): TMessagePing;
     procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
   end;
 
@@ -193,6 +216,13 @@ end;
 
 { TMessage ------------------------------------------------------------------- }
 
+const
+  IdPlayerState = 8217832;
+  IdPlayerHit = 2376;
+  IdPlayerJoin = 9234;
+  IdPlayerDisconnect = 5122323;
+  IdPing = 872387;
+
 class function TMessage.TryDeserialize(const RnlMessage: TRNLMessage): TMessage;
 begin
   { Try various TMessage descendants.
@@ -205,18 +235,14 @@ begin
   if Result <> nil then Exit;
   Result := TMessagePlayerDisconnect.TryDeserialize(RnlMessage);
   if Result <> nil then Exit;
+  Result := TMessagePing.TryDeserialize(RnlMessage);
+  if Result <> nil then Exit;
   // add more messages here...
   Result := TMessageChat.TryDeserialize(RnlMessage);
   if Result <> nil then Exit;
 end;
 
 { TMessagePlayerState -------------------------------------------------------- }
-
-const
-  IdPlayerState = 8217832;
-  IdPlayerHit = 2376;
-  IdPlayerJoin = 9234;
-  IdPlayerDisconnect = 5122323;
 
 type
   TRecPlayerState = packed record
@@ -365,6 +391,40 @@ var
 begin
   Rec.MessageId := IdPlayerDisconnect;
   Rec.PlayerId := PlayerId;
+  RnlChannel.SendMessageData(@Rec, SizeOf(Rec));
+end;
+
+{ TMessagePing -------------------------------------------------------- }
+
+type
+  TRecPing = packed record
+    MessageId: Int32;
+    ClientSendTime: TTimerResult;
+  end;
+  PRecPing = ^TRecPing;
+
+class function TMessagePing.TryDeserialize(const RnlMessage: TRNLMessage): TMessagePing;
+var
+  Rec: TRecPing;
+begin
+  Result := nil;
+  if RnlMessage.DataLength = SizeOf(TRecPing) then
+  begin
+    Rec := PRecPing(RnlMessage.Data)^;
+    if Rec.MessageId = IdPing then
+    begin
+      Result := TMessagePing.Create;
+      Result.ClientSendTime := Rec.ClientSendTime;
+    end;
+  end
+end;
+
+procedure TMessagePing.SendSerialized(const RnlChannel: TRNLPeerChannel);
+var
+  Rec: TRecPing;
+begin
+  Rec.MessageId := IdPing;
+  Rec.ClientSendTime := ClientSendTime;
   RnlChannel.SendMessageData(@Rec, SizeOf(Rec));
 end;
 

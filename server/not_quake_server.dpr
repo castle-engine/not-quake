@@ -21,7 +21,7 @@ uses
   {$ifdef unix} cthreads, {$endif} SysUtils, Classes, SyncObjs, Generics.Collections,
   RNL,
   CastleLog, CastleClassUtils, CastleStringUtils,
-  NetworkCommon;
+  GameNetwork;
 
 type
   TServer = class(TNetworkingThread)
@@ -206,6 +206,9 @@ begin
              if (M is TMessageChat) and
                 (TMessageChat(M).Text = 'Hello world from client!') then
                FreeAndNil(M) // do not broadcast this
+             else
+             if M is TMessagePing then
+               SendMessage(M, false, Event.Peer.LocalPeerID)
              else
                SendMessage(M, true, Event.Peer.LocalPeerID); // broadcast everything else, but not to originating client
            end else

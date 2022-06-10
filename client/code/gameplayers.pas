@@ -20,7 +20,7 @@ interface
 
 uses Generics.Collections,
   CastleVectors, CastleTransform, CastleViewport, CastleScene,
-  NetworkCommon;
+  GameNetwork;
 
 type
   TPlayer = class

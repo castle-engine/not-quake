@@ -18,7 +18,7 @@ unit GameClient;
 
 interface
 
-uses NetworkCommon;
+uses GameNetwork;
 
 type
   TClient=class(TNetworkingThread)
