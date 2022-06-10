@@ -27,13 +27,16 @@ type
     { Components designed using CGE editor, loaded from the castle-user-interface file. }
     LabelFps: TCastleLabel;
     LabelNetworkLog: TCastleLabel;
+
+    WaitingForChat: Boolean;
+
     procedure NetworkLog(const Message: String);
-    procedure SendChat(const S: String);
   public
     PlayerNick: String; //< Set before starting state
     constructor Create(AOwner: TComponent); override;
     procedure Start; override;
     procedure Stop; override;
+    procedure Resume; override;
     procedure Update(const SecondsPassed: Single; var HandleInput: Boolean); override;
     function Press(const Event: TInputPressRelease): Boolean; override;
   end;
@@ -45,7 +48,7 @@ implementation
 
 uses SysUtils,
   CastleStringUtils,
-  GameClient, NetworkCommon, GameStateMainMenu;
+  GameClient, NetworkCommon, GameStateMainMenu, GameStateInputChat;
 
 constructor TStatePlay.Create(AOwner: TComponent);
 begin
@@ -53,16 +56,18 @@ begin
   DesignUrl := 'castle-data:/gamestateplay.castle-user-interface';
 end;
 
-procedure TStatePlay.SendChat(const S: String);
-var
-  M: TMessageChat;
-begin
-  M := TMessageChat.Create;
-  M.Text := S;
-  Client.SendMessage(M, true, -1);
-end;
-
 procedure TStatePlay.Start;
+
+  procedure SendJoin;
+  var
+    M: TMessageChat;
+  begin
+    // reuse TMessageChat, no dedicated TMessageJoin now
+    M := TMessageChat.Create;
+    M.Text := PlayerNick + ' joins the game';
+    Client.SendMessage(M, true, -1);
+  end;
+
 begin
   inherited;
   { Find components, by name, that we need to access from code }
@@ -72,7 +77,9 @@ begin
   NetworkInitialize;
   OnNetworkLog := {$ifdef FPC}@{$endif} NetworkLog;
 
-  SendChat(PlayerNick + ' joins the game');
+  WaitingForChat := false;
+
+  SendJoin;
 end;
 
 procedure TStatePlay.Stop;
@@ -109,16 +116,19 @@ begin
   Result := inherited;
   if Result then Exit; // allow the ancestor to handle keys
 
-  if Event.IsKey(key1) then
+  if TUIState.CurrentTop = Self then
   begin
-    // TODO: proper chat
-    SendChat(PlayerNick + ' says "1"');
-    Exit(true); // key was handled
-  end;
-  if Event.IsKey(CtrlQ) then
-  begin
-    TUIState.Current := StateMainMenu;
-    Exit(true); // key was handled
+    if Event.IsKey(CtrlQ) then
+    begin
+      TUIState.Current := StateMainMenu;
+      Exit(true); // key was handled
+    end;
+    if Event.IsKey('/') then
+    begin
+      TUIState.Push(StateInputChat);
+      WaitingForChat := true;
+      Exit(true); // key was handled
+    end;
   end;
 end;
 
@@ -129,6 +139,28 @@ begin
   LabelNetworkLog.Text.Add(Message);
   while LabelNetworkLog.Text.Count > MaxNetworkLogLines do
     LabelNetworkLog.Text.Delete(0);
+end;
+
+procedure TStatePlay.Resume;
+
+  procedure SendChat(const S: String);
+  var
+    M: TMessageChat;
+  begin
+    M := TMessageChat.Create;
+    M.Text := PlayerNick + ' says: ' + S;
+    Client.SendMessage(M, true, -1);
+    NetworkLog('You (' + PlayerNick + ') say: ' + S);
+  end;
+
+begin
+  inherited;
+  if WaitingForChat then
+  begin
+    if StateInputChat.ChatToSend <> '' then
+      SendChat(StateInputChat.ChatToSend);
+    WaitingForChat := false;
+  end;
 end;
 
 end.

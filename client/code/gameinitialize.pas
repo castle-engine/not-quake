@@ -28,6 +28,7 @@ uses SysUtils,
   // The content here may be automatically updated by CGE editor.
   , GameStateMainMenu
   , GameStatePlay
+  , GameStateInputChat
   {$endregion 'Castle Initialization Uses'};
 
 var
@@ -48,6 +49,7 @@ begin
   // The content here may be automatically updated by CGE editor.
   StateMainMenu := TStateMainMenu.Create(Application);
   StatePlay := TStatePlay.Create(Application);
+  StateInputChat := TStateInputChat.Create(Application);
   {$endregion 'Castle State Creation'}
 
   TUIState.Current := StateMainMenu;

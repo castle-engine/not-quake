@@ -2,6 +2,14 @@
 
 Online first-person shooter using Castle Game Engine and RNL.
 
+Keys:
+
+- `/` to send chat (type whatever, press `Enter` to send, `Escape` to cancel)
+
+- `Ctrl + Q` to go back to main menu
+
+## Code
+
 Checkout with submodules, `git clone --recurse-submodules https://github.com/castle-engine/not-quake`
 
 Done for gamejam in Cat-astrophe Games on 2022-06-10. Plans: https://docs.google.com/document/d/18TMnuJfNZQVhCodwymMnAqt9yUw5070KzoEyz8LA204/edit?usp=sharing
@@ -21,5 +29,3 @@ Compile by entering `client` or `server` and build by:
 ## TODO
 
 pass binary messages, handle all message types
-
-input any chat msg
