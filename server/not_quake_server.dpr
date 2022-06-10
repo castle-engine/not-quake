@@ -18,14 +18,10 @@
 {$ifdef MSWINDOWS} {$apptype CONSOLE} {$endif}
 
 uses
-  {$ifdef unix}
-  cthreads,
-  {$endif}
-  SysUtils,
-  Classes,
-  SyncObjs,
-  NetworkCommon,
-  RNL;
+  {$ifdef unix} cthreads, {$endif} SysUtils, Classes, SyncObjs,
+  RNL,
+  CastleLog, CastleClassUtils,
+  NetworkCommon;
 
 type TServer=class(TNetworkingThread)
       private
@@ -142,21 +138,24 @@ begin
  ConsoleOutput('Server: Thread stopped');
 end;
 
+const
+  LogsFlushTimeout = 10;
 var
   Server:TServer;
-  Command: String;
 begin
+  // write to stdout, regardless of platform, even on Windows
+  InitializeLog(StdOutStream, ltDateTime);
+
   RNLInstance:=TRNLInstance.Create;
   try
     RNLNetwork:={$ifdef VirtualNetwork}TRNLVirtualNetwork{$else}TRNLRealNetwork{$endif}.Create(RNLInstance);
     try
       Server:=TServer.Create(false);
       try
-        readln(Command);
-        while Command <> 'q' do
+        while true do
         begin
-          Server.SendMessage(-1, Command);
-          readln(Command);
+          FlushConsoleOutput;
+          Sleep(LogsFlushTimeout);
         end;
       finally
         Server.Terminate;
