@@ -15,6 +15,8 @@ procedure LogThreadException(const aThreadName:string;const aException:TObject);
 procedure FlushConsoleOutput;
 
 type
+  TPlayerId = Int32;
+
   TMessage = class
   private
     RecipientPeerId: Integer; //< Only used for messages scheduled to send from this process
@@ -25,13 +27,13 @@ type
   end;
 
   TMessagePlayerJoin = class(TMessage)
-    PlayerId: Int32;
+    PlayerId: TPlayerId;
     class function TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerJoin;
     procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
   end;
 
   TMessagePlayerDisconnect = class(TMessage)
-    PlayerId: Int32;
+    PlayerId: TPlayerId;
     class function TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerDisconnect;
     procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
   end;
@@ -50,7 +52,7 @@ type
     { Player that got hit.
       Don't confuse PlayerId (each player has unique id, known to all clients and server)
       with PeerId that is specific to given connection client<->server. }
-    PlayerId: Integer;
+    PlayerId: TPlayerId;
     class function TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerShoot;
     procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
   end;
@@ -100,6 +102,10 @@ type
 
 var
   OnNetworkLog: TLogEvent;
+
+const
+  // TODO: relying on such suffix is a hack to associate nick names
+  SJoinsSuffix = ' joins the game';
 
 implementation
 
@@ -251,7 +257,7 @@ end;
 type
   TRecPlayerShoot = packed record
     MessageId: Int32;
-    PlayerId: Int32;
+    PlayerId: TPlayerId;
   end;
   PRecPlayerShoot = ^TRecPlayerShoot;
 
@@ -285,7 +291,7 @@ end;
 type
   TRecPlayerJoin = packed record
     MessageId: Int32;
-    PlayerId: Int32;
+    PlayerId: TPlayerId;
   end;
   PRecPlayerJoin = ^TRecPlayerJoin;
 
@@ -319,7 +325,7 @@ end;
 type
   TRecPlayerDisconnect = packed record
     MessageId: Int32;
-    PlayerId: Int32;
+    PlayerId: TPlayerId;
   end;
   PRecPlayerDisconnect = ^TRecPlayerDisconnect;
 

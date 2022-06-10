@@ -19,11 +19,11 @@ unit GamePlayers;
 interface
 
 uses Generics.Collections,
-  CastleVectors;
+  CastleVectors, NetworkCommon;
 
 type
   TPlayer = class
-    PlayerId: Int32;
+    PlayerId: TPlayerId;
     Nick: String;
     Position, PositionDelta: TVector3;
     Rotation, RotationDelta: Single;
@@ -32,7 +32,7 @@ type
 
   TPlayerList = class({$ifdef FPC}specialize{$endif} TObjectList<TPlayer>)
     { Find given PlayerId, returns nil if not found. }
-    function FindPlayerId(const PlayerId: Int32): TPlayer;
+    function FindPlayerId(const PlayerId: TPlayerId): TPlayer;
   end;
 
 var
@@ -43,7 +43,7 @@ var
 
 implementation
 
-function TPlayerList.FindPlayerId(const PlayerId: Int32): TPlayer;
+function TPlayerList.FindPlayerId(const PlayerId: TPlayerId): TPlayer;
 var
   P: TPlayer;
 begin

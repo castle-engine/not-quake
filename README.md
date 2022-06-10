@@ -28,8 +28,6 @@ Compile by entering `client` or `server` and build by:
 
 ## TODO
 
-server should manage players with nicks, send existing players when you connect to already busy server
-
 show other players
 
 update other players pos/rot

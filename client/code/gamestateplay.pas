@@ -61,10 +61,6 @@ begin
   DesignUrl := 'castle-data:/gamestateplay.castle-user-interface';
 end;
 
-const
-  // TODO: relying on such suffix is a hack to associate nick names
-  SJoinsSuffix = ' joins the game';
-
 procedure TStatePlay.Start;
 
   procedure SendJoin;
@@ -93,8 +89,9 @@ begin
   NetworkInitialize;
   OnNetworkLog := {$ifdef FPC}@{$endif} NetworkLog;
 
+  // clear state, in case this state is started multiple times
   WaitingForChat := false;
-
+  LastNickJoined := '';
   // TODO: LastBroadcastState := TTimerResult.Uninitialized;
   FillChar(LastBroadcastState, SizeOf(LastBroadcastState), 0);
 

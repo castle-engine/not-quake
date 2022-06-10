@@ -20,7 +20,7 @@
 uses
   {$ifdef unix} cthreads, {$endif} SysUtils, Classes, SyncObjs, Generics.Collections,
   RNL,
-  CastleLog, CastleClassUtils,
+  CastleLog, CastleClassUtils, CastleStringUtils,
   NetworkCommon;
 
 type
@@ -34,7 +34,12 @@ type
     destructor Destroy; override;
   end;
 
-  TPeerToPlayer = specialize TDictionary<Integer, Integer>;
+  TPlayer = class
+    PlayerId: TPlayerId;
+    Nick: String;
+  end;
+
+  TPeerToPlayer = {$ifdef FPC}specialize{$endif} TObjectDictionary<Integer, TPlayer>;
 
 var
   RNLInstance:TRNLInstance=nil;
@@ -57,19 +62,40 @@ procedure TServer.Execute;
 var
   PeerToPlayer: TPeerToPlayer;
 
+  { When new player joins server already filled with players, notify about new players. }
+  procedure SendExistingPlayers(const LocalPeerID: Integer);
+  var
+    MJ: TMessagePlayerJoin;
+    M: TMessageChat;
+    Player: TPlayer;
+  begin
+    for Player in PeerToPlayer.Values do
+    begin
+      // reuse TMessageChat to pass nick
+      // TODO: this is poor to rely on 2 messages, and it depends on ordered channel - when reading we expect SJoinsSuffix in chat before TMessagePlayerJoin
+      M := TMessageChat.Create;
+      M.Text := Player.Nick + SJoinsSuffix;
+      SendMessage(M, false, LocalPeerID);
+
+      MJ := TMessagePlayerJoin.Create;
+      MJ.PlayerId := Player.PlayerId;
+      SendMessage(MJ, false, LocalPeerID);
+    end;
+  end;
+
   procedure SendDisconnect(const LocalPeerID: Integer);
   var
     M: TMessagePlayerDisconnect;
-    PlayerId: Integer;
+    Player: TPlayer;
   begin
-    if not PeerToPlayer.TryGetValue(LocalPeerID, PlayerId) then
+    if not PeerToPlayer.TryGetValue(LocalPeerID, Player) then
     begin
       ConsoleOutput(Format('WARNING: Cannot find on peer->player map peer id %d', [LocalPeerID]));
       Exit;
     end;
 
     M := TMessagePlayerDisconnect.Create;
-    M.PlayerId := PlayerId;
+    M.PlayerId := Player.PlayerId;
     SendMessage(M, true, LocalPeerID);
     PeerToPlayer.Remove(LocalPeerID);
   end;
@@ -83,11 +109,13 @@ var
   Server:TRNLHost;
   Event:TRNLHostEvent;
   M: TMessage;
+  NewPlayer: TPlayer;
+  LastNickJoined: String;
 begin
   // TODO: express rest like this, avoid such nested try finally
   PeerToPlayer := nil;
   try
-    PeerToPlayer := TPeerToPlayer.Create;
+    PeerToPlayer := TPeerToPlayer.Create([doOwnsValues]);
 
     {$ifndef fpc}
     NameThreadForDebugging('Server');
@@ -134,6 +162,7 @@ begin
                                  Event.Peer.CountChannels]));
            //Event.Peer.Channels[0].SendMessageString('Hello world from server!');
      //    Server.Flush;
+           SendExistingPlayers(Event.Peer.LocalPeerID);
           end;
           RNL_HOST_EVENT_TYPE_PEER_DISCONNECT:
           begin
@@ -157,10 +186,21 @@ begin
 
              // only log TMessageChat to avoid log flood
              if M is TMessageChat then
+             begin
                ConsoleOutput('Server: A chat message received on channel '+IntToStr(Event.Channel)+': "'+String(TMessageChat(M).Text)+'" from ' + IntToStr(Event.Peer.LocalPeerID));
 
+               // record LastNickJoined for later usage
+               if IsSuffix(SJoinsSuffix, TMessageChat(M).Text, false) then
+                 LastNickJoined := SuffixRemove(SJoinsSuffix, TMessageChat(M).Text, false);
+             end;
+
              if M is TMessagePlayerJoin then
-               PeerToPlayer.Add(Event.Peer.LocalPeerID, TMessagePlayerJoin(M).PlayerId);
+             begin
+               NewPlayer := TPlayer.Create;
+               NewPlayer.PlayerId := TMessagePlayerJoin(M).PlayerId;
+               NewPlayer.Nick := LastNickJoined;
+               PeerToPlayer.Add(Event.Peer.LocalPeerID, NewPlayer);
+             end;
 
              if (M is TMessageChat) and
                 (TMessageChat(M).Text = 'Hello world from client!') then
