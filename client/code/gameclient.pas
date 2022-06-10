@@ -211,7 +211,7 @@ begin
     Client.Terminate;
     Client.WaitFor;
     LogThreadException('Client',Client.FatalException);
-    Client.Free;
+    FreeAndNil(Client);
   end;
   FreeAndNil(RNLNetwork);
   FreeAndNil(RNLInstance);

@@ -7,9 +7,12 @@ uses SysUtils, Classes, SyncObjs,
   RNL,
   CastleLog, CastleApplicationProperties;
 
+{ Call these from any thread (main or not) to report something. }
 procedure ConsoleOutput(const s:string);
-procedure FlushConsoleOutput;
 procedure LogThreadException(const aThreadName:string;const aException:TObject);
+
+{ Call this from main thread to display logs. }
+procedure FlushConsoleOutput;
 
 type
   TNetworkingThread = class(TThread)
@@ -35,31 +38,27 @@ var
 implementation
 
 type
-  TConsoleOutputThread=class(TThread)
-  protected
-    procedure Execute; override;
-  end;
-
   TConsoleOutputQueue={$ifdef FPC}specialize{$endif} TRNLQueue<string>;
 
 var
   ConsoleOutputQueue:TConsoleOutputQueue=nil;
-
-  ConsoleOutputThread:TConsoleOutputThread=nil;
-
   ConsoleOutputLock:TCriticalSection=nil;
-
-  ConsoleOutputEvent:TEvent=nil;
 
 procedure ConsoleOutput(const s:string);
 begin
- ConsoleOutputLock.Acquire;
- try
-  ConsoleOutputQueue.Enqueue(s);
-  ConsoleOutputEvent.SetEvent;
- finally
-  ConsoleOutputLock.Release;
- end;
+  if (ConsoleOutputLock = nil) or
+     (ConsoleOutputQueue = nil) then
+  begin
+    WritelnWarning('ConsoleOutput called after console thread resources freed. Message: ' + S);
+    Exit;
+  end;
+
+  ConsoleOutputLock.Acquire;
+  try
+    ConsoleOutputQueue.Enqueue(s);
+  finally
+    ConsoleOutputLock.Release;
+  end;
 end;
 
 procedure FlushConsoleOutput;
@@ -111,39 +110,6 @@ begin
  end;
 end;
 {$ifend}
-
-procedure TConsoleOutputThread.Execute;
-var s:string;
-begin
-{$ifndef fpc}
- NameThreadForDebugging('Console output');
-{$endif}
- ConsoleOutput('Console output: Thread started');
- try
-  while not Terminated do
-  begin
-   ConsoleOutputEvent.WaitFor(1000);
-   while not Terminated do
-   begin
-    ConsoleOutputLock.Acquire;
-    try
-     if not ConsoleOutputQueue.Dequeue(s) then
-      break;
-    finally
-     ConsoleOutputLock.Release;
-    end;
-    WritelnLog('Network', s);
-    if Assigned(OnNetworkLog) then
-      OnNetworkLog(S);
-   end;
-  end;
- except
-  on e:Exception do begin
-   LogThreadException('Console output',e);
-  end;
- end;
- ConsoleOutput('Console output: Thread stopped');
-end;
 
 { TNetworkingThread ---------------------------------------------------------- }
 
@@ -198,26 +164,12 @@ end;
 
 initialization
   ConsoleOutputLock:=TCriticalSection.Create;
-  ConsoleOutputEvent:=TEvent.Create(nil,false,false,'');
   ConsoleOutputQueue:=TConsoleOutputQueue.Create;
-  ConsoleOutputThread:=TConsoleOutputThread.Create(false);
 finalization
-  if ConsoleOutputThread <> nil then
-  begin
-    ConsoleOutputThread.Terminate;
-    ConsoleOutputEvent.SetEvent;
-    ConsoleOutputThread.WaitFor;
-    LogThreadException('Console output',ConsoleOutputThread.FatalException);
-    FreeAndNil(ConsoleOutputThread);
-  end;
-
   if ConsoleOutputQueue <> nil then
   begin
     FlushConsoleOutput;
     FreeAndNil(ConsoleOutputQueue);
   end;
-
-  FreeAndNil(ConsoleOutputEvent);
-
   FreeAndNil(ConsoleOutputLock);
 end.

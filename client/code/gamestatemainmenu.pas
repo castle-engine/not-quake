@@ -13,7 +13,7 @@
   ----------------------------------------------------------------------------
 }
 
-{ Main state, where most of the application logic takes place. }
+{ Main menu. }
 unit GameStateMainMenu;
 
 interface
@@ -23,17 +23,15 @@ uses Classes,
   CastleUIControls, CastleControls, CastleKeysMouse;
 
 type
-  { Main state, where most of the application logic takes place. }
   TStateMainMenu = class(TUIState)
   private
     { Components designed using CGE editor, loaded from gamestatemainmenu.castle-user-interface. }
-    LabelFps: TCastleLabel;
-    LabelNetworkLog: TCastleLabel;
-    procedure NetworkLog(const Message: String);
+    EditNick: TCastleEdit;
+    ButtonJoin: TCastleButton;
+    procedure ClickJoin(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     procedure Start; override;
-    procedure Stop; override;
     procedure Update(const SecondsPassed: Single; var HandleInput: Boolean); override;
     function Press(const Event: TInputPressRelease): Boolean; override;
   end;
@@ -44,7 +42,8 @@ var
 implementation
 
 uses SysUtils,
-  GameClient, NetworkCommon;
+  CastleWindow,
+  GameStatePlay;
 
 { TStateMainMenu ----------------------------------------------------------------- }
 
@@ -59,23 +58,28 @@ begin
   inherited;
 
   { Find components, by name, that we need to access from code }
-  LabelFps := DesignedComponent('LabelFps') as TCastleLabel;
-  LabelNetworkLog := DesignedComponent('LabelNetworkLog') as TCastleLabel;
-  NetworkInitialize;
-  OnNetworkLog := {$ifdef FPC}@{$endif} NetworkLog;
-end;
+  EditNick := DesignedComponent('EditNick') as TCastleEdit;
+  ButtonJoin := DesignedComponent('ButtonJoin') as TCastleButton;
 
-procedure TStateMainMenu.Stop;
-begin
-  NetworkFinish;
-  inherited;
+  EditNick.Text := 'Viper' + IntToStr(Random(1000));
+  ButtonJoin.OnClick := {$ifdef FPC}@{$endif} ClickJoin;
 end;
 
 procedure TStateMainMenu.Update(const SecondsPassed: Single; var HandleInput: Boolean);
 begin
   inherited;
-  { This virtual method is executed every frame.}
-  LabelFps.Caption := 'FPS: ' + Container.Fps.ToString;
+end;
+
+procedure TStateMainMenu.ClickJoin(Sender: TObject);
+begin
+  if EditNick.Text = '' then
+  begin
+    Application.MainWindow.MessageOK('Nick cannot be empty', mtError);
+    Exit;
+  end;
+
+  StatePlay.PlayerNick := EditNick.Text;
+  TUIState.Current := StatePlay;
 end;
 
 function TStateMainMenu.Press(const Event: TInputPressRelease): Boolean;
@@ -83,20 +87,11 @@ begin
   Result := inherited;
   if Result then Exit; // allow the ancestor to handle keys
 
-  if Event.IsKey(keySpace) then
+  if Event.IsKey(keyEnter) then
   begin
-    Client.SendMessage(-1, 'Hello from GUI client in CGE');
+    ClickJoin(nil);
     Exit(true); // key was handled
   end;
-end;
-
-procedure TStateMainMenu.NetworkLog(const Message: String);
-const
-  MaxNetworkLogLines = 5;
-begin
-  LabelNetworkLog.Text.Add(Message);
-  while LabelNetworkLog.Text.Count > MaxNetworkLogLines do
-    LabelNetworkLog.Text.Delete(0);
 end;
 
 end.
