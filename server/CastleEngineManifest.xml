@@ -5,7 +5,7 @@
   <compiler_options>
     <search_paths>
       <path value="../common/" />
-      <path value="../../rnl/src/" />
+      <path value="../rnl/src/" />
     </search_paths>
   </compiler_options>
 </project>
