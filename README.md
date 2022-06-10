@@ -2,11 +2,17 @@
 
 Online first-person shooter using Castle Game Engine and RNL.
 
-Keys:
+Client keys:
 
 - `/` to send chat (type whatever, press `Enter` to send, `Escape` to cancel)
 
 - `Ctrl + Q` to go back to main menu
+
+- `Escape` to toggle mouse look on/off
+
+- AWSD, arrow keys, rotate with mouse (when mouse look) to move/rotate
+
+- `Left click` to shoot
 
 ## Code
 

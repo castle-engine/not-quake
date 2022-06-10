@@ -20,7 +20,7 @@ interface
 
 uses Classes,
   CastleVectors, CastleUIState, CastleUIControls, CastleControls, CastleKeysMouse,
-  CastleViewport, CastleTimeUtils;
+  CastleViewport, CastleTimeUtils, CastleCameras;
 
 type
   TStatePlay = class(TUIState)
@@ -28,8 +28,9 @@ type
     { Components designed using CGE editor, loaded from the castle-user-interface file. }
     LabelFps: TCastleLabel;
     LabelNetworkLog: TCastleLabel;
+    LabelControls: TCastleLabel;
     MainViewport: TCastleViewport;
-    //TODO WalkNavigation: TCastleWalkNavigation;
+    WalkNavigation: TCastleWalkNavigation;
 
     WaitingForChat: Boolean;
     LastBroadcastState: TTimerResult;
@@ -41,6 +42,7 @@ type
     constructor Create(AOwner: TComponent); override;
     procedure Start; override;
     procedure Stop; override;
+    procedure Pause; override;
     procedure Resume; override;
     procedure Update(const SecondsPassed: Single; var HandleInput: Boolean); override;
     function Press(const Event: TInputPressRelease): Boolean; override;
@@ -85,6 +87,8 @@ begin
   LabelFps := DesignedComponent('LabelFps') as TCastleLabel;
   LabelNetworkLog := DesignedComponent('LabelNetworkLog') as TCastleLabel;
   MainViewport := DesignedComponent('MainViewport') as TCastleViewport;
+  WalkNavigation := DesignedComponent('WalkNavigation') as TCastleWalkNavigation;
+  LabelControls := DesignedComponent('LabelControls') as TCastleLabel;
 
   NetworkInitialize;
   OnNetworkLog := {$ifdef FPC}@{$endif} NetworkLog;
@@ -209,6 +213,16 @@ begin
       WaitingForChat := true;
       Exit(true); // key was handled
     end;
+    if Event.IsKey(keyEscape) then
+    begin
+      WalkNavigation.MouseLook := not WalkNavigation.MouseLook;
+      Exit(true); // key was handled
+    end;
+    if Event.IsKey(keyF1) then
+    begin
+      LabelControls.Exists := not LabelControls.Exists;
+      Exit(true); // key was handled
+    end;
   end;
 end;
 
@@ -241,6 +255,13 @@ begin
       SendChat(StateInputChat.ChatToSend);
     WaitingForChat := false;
   end;
+  WalkNavigation.MouseLook := true;
+end;
+
+procedure TStatePlay.Pause;
+begin
+  WalkNavigation.MouseLook := false;
+  inherited;
 end;
 
 end.

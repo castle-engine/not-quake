@@ -47,6 +47,7 @@ constructor TStateInputChat.Create(AOwner: TComponent);
 begin
   inherited;
   DesignUrl := 'castle-data:/gamestateinputchat.castle-user-interface';
+  InterceptInput := true;
 end;
 
 procedure TStateInputChat.Start;
@@ -83,9 +84,6 @@ end;
 
 function TStateInputChat.Press(const Event: TInputPressRelease): Boolean;
 begin
-  Result := inherited;
-  if Result then Exit; // allow the ancestor to handle keys
-
   if Event.IsKey(keyEnter) then
   begin
     ClickSend(nil);
@@ -96,6 +94,9 @@ begin
     ClickCancel(nil);
     Exit(true); // key was handled
   end;
+
+  { since this has InterceptInput, check ancestor last (it will always return true) }
+  Result := inherited;
 end;
 
 end.
