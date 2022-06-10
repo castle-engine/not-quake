@@ -67,8 +67,9 @@ jobs:
 
       - name: Package Android Client
         run: cd client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --target=android --verbose
-      - name: Package Android Server
-        run: cd server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --target=android --verbose
+      # We'd need some UI for Android server
+      # - name: Package Android Server
+      #   run: cd server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --target=android --verbose
       - name: Archive Artifacts
         uses: actions/upload-artifact@v3
         with:
