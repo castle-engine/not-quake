@@ -36,9 +36,9 @@ jobs:
         run: cd $CASTLE_ENGINE_PATH/tools/build-tool/ && ./castle-engine_compile.sh
 
       - name: Package Windows Client
-        run: cd rnl-first-cge-example/client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=win64 --cpu=x86_64 --verbose
+        run: cd client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=win64 --cpu=x86_64 --verbose
       - name: Package Windows Server
-        run: cd rnl-first-cge-example/server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=win64 --cpu=x86_64 --verbose
+        run: cd server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=win64 --cpu=x86_64 --verbose
       - name: Archive Artifacts
         # See https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v3
@@ -48,34 +48,34 @@ jobs:
           # See https://stackoverflow.com/questions/19109912/yaml-do-i-need-quotes-for-strings-in-yaml
           # https://yamlchecker.com/
           path: |
-            "rnl-first-cge-example/client/*-win64-x86_64.zip"
-            "rnl-first-cge-example/server/*-win64-x86_64.zip"
+            "client/*-win64-x86_64.zip"
+            "server/*-win64-x86_64.zip"
           if-no-files-found: error
 
       - name: Package Linux Client
-        run: cd rnl-first-cge-example/client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=linux --cpu=x86_64 --verbose
+        run: cd client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=linux --cpu=x86_64 --verbose
       - name: Package Linux Server
-        run: cd rnl-first-cge-example/server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=linux --cpu=x86_64 --verbose
+        run: cd server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=linux --cpu=x86_64 --verbose
       - name: Archive Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: linux-build
           path: |
-            "rnl-first-cge-example/client/*-linux-x86_64.tar.gz"
-            "rnl-first-cge-example/server/*-linux-x86_64.tar.gz"
+            "client/*-linux-x86_64.tar.gz"
+            "server/*-linux-x86_64.tar.gz"
           if-no-files-found: error
 
       - name: Package Android Client
-        run: cd rnl-first-cge-example/client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --target=android --verbose
+        run: cd client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --target=android --verbose
       - name: Package Android Server
-        run: cd rnl-first-cge-example/server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --target=android --verbose
+        run: cd server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --target=android --verbose
       - name: Archive Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: android-build
           path: |
-            "rnl-first-cge-example/client/*.apk"
-            "rnl-first-cge-example/server/*.apk"
+            "client/*.apk"
+            "server/*.apk"
           if-no-files-found: error
 
   # Build for platforms supported from macOS.
@@ -99,14 +99,14 @@ jobs:
         run: cd $CASTLE_ENGINE_PATH/tools/build-tool/ && ./castle-engine_compile.sh
 
       - name: Package macOS Client
-        run: cd rnl-first-cge-example/client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=darwin --cpu=x86_64 --verbose
+        run: cd client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=darwin --cpu=x86_64 --verbose
       - name: Package macOS Server
-        run: cd rnl-first-cge-example/server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=darwin --cpu=x86_64 --verbose
+        run: cd server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=darwin --cpu=x86_64 --verbose
       - name: Archive Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: macos-build
           path: |
-            "rnl-first-cge-example/client/*.app"
-            "rnl-first-cge-example/server/*.app"
+            "client/*.app"
+            "server/*.app"
           if-no-files-found: error
