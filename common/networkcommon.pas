@@ -52,13 +52,14 @@ type
     procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
   end;
 
-  TMessagePlayerShoot = class(TMessage)
+  TMessagePlayerHit = class(TMessage)
   public
     { Player that got hit.
       Don't confuse PlayerId (each player has unique id, known to all clients and server)
       with PeerId that is specific to given connection client<->server. }
-    PlayerId: TPlayerId;
-    class function TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerShoot;
+    PlayerId: TPlayerId; //< TODO: rename to HitPlayerId
+    ShooterPlayerId: TPlayerId;
+    class function TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerHit;
     procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
   end;
 
@@ -111,6 +112,8 @@ var
 const
   // TODO: relying on such suffix is a hack to associate nick names
   SJoinsSuffix = ' joins the game';
+
+  MaxLife = 10;
 
 implementation
 
@@ -196,7 +199,7 @@ begin
     Try TMessageChat as last, as it always returns non-nil. }
   Result := TMessagePlayerState.TryDeserialize(RnlMessage);
   if Result <> nil then Exit;
-  Result := TMessagePlayerShoot.TryDeserialize(RnlMessage);
+  Result := TMessagePlayerHit.TryDeserialize(RnlMessage);
   if Result <> nil then Exit;
   Result := TMessagePlayerJoin.TryDeserialize(RnlMessage);
   if Result <> nil then Exit;
@@ -211,7 +214,7 @@ end;
 
 const
   IdPlayerState = 8217832;
-  IdPlayerShoot = 2376;
+  IdPlayerHit = 2376;
   IdPlayerJoin = 9234;
   IdPlayerDisconnect = 5122323;
 
@@ -260,37 +263,40 @@ begin
   RnlChannel.SendMessageData(@Rec, SizeOf(Rec));
 end;
 
-{ TMessagePlayerShoot -------------------------------------------------------- }
+{ TMessagePlayerHit -------------------------------------------------------- }
 
 type
-  TRecPlayerShoot = packed record
+  TRecPlayerHit = packed record
     MessageId: Int32;
     PlayerId: TPlayerId;
+    ShooterPlayerId: TPlayerId;
   end;
-  PRecPlayerShoot = ^TRecPlayerShoot;
+  PRecPlayerHit = ^TRecPlayerHit;
 
-class function TMessagePlayerShoot.TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerShoot;
+class function TMessagePlayerHit.TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerHit;
 var
-  Rec: TRecPlayerShoot;
+  Rec: TRecPlayerHit;
 begin
   Result := nil;
-  if RnlMessage.DataLength = SizeOf(TRecPlayerShoot) then
+  if RnlMessage.DataLength = SizeOf(TRecPlayerHit) then
   begin
-    Rec := PRecPlayerShoot(RnlMessage.Data)^;
-    if Rec.MessageId = IdPlayerShoot then
+    Rec := PRecPlayerHit(RnlMessage.Data)^;
+    if Rec.MessageId = IdPlayerHit then
     begin
-      Result := TMessagePlayerShoot.Create;
-      Result.PlayerId := Rec.PlayerId;
+      Result := TMessagePlayerHit.Create;
+      Result.PlayerId        := Rec.PlayerId;
+      Result.ShooterPlayerId := Rec.ShooterPlayerId;
     end;
   end
 end;
 
-procedure TMessagePlayerShoot.SendSerialized(const RnlChannel: TRNLPeerChannel);
+procedure TMessagePlayerHit.SendSerialized(const RnlChannel: TRNLPeerChannel);
 var
-  Rec: TRecPlayerShoot;
+  Rec: TRecPlayerHit;
 begin
-  Rec.MessageId := IdPlayerShoot;
-  Rec.PlayerId := PlayerId;
+  Rec.MessageId := IdPlayerHit;
+  Rec.PlayerId        := PlayerId;
+  Rec.ShooterPlayerId := ShooterPlayerId;
   RnlChannel.SendMessageData(@Rec, SizeOf(Rec));
 end;
 

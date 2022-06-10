@@ -24,6 +24,10 @@ uses Generics.Collections,
 
 type
   TPlayer = class
+  strict private
+    Scene: TCastleScene;
+    Text: TCastleText;
+  public
     PlayerId: TPlayerId;
     Nick: String;
     Position, PositionDelta: TVector3;
@@ -33,6 +37,11 @@ type
     destructor Destroy; override;
     procedure CreateTransform(const Viewport: TCastleViewport);
     procedure UpdateTransform;
+  end;
+
+  TPlayerBehavior = class(TCastleBehavior)
+  public
+    Player: TPlayer;
   end;
 
   TPlayerList = class({$ifdef FPC}specialize{$endif} TObjectList<TPlayer>)
@@ -64,11 +73,9 @@ end;
 
 procedure TPlayer.CreateTransform(const Viewport: TCastleViewport);
 var
-  Scene: TCastleScene;
-  Text: TCastleText;
+  Beh: TPlayerBehavior;
 begin
   Transform := TCastleTransform.Create(Viewport);
-  UpdateTransform;
 
   Scene := TCastleScene.Create(Transform);
   Scene.Load(AvatarRoot.DeepCopy as TX3DRootNode, true);
@@ -77,7 +84,6 @@ begin
   Transform.Add(Scene);
 
   Text := TCastleText.Create(Transform);
-  Text.Caption := Nick;
   Text.Translation := Vector3(0, 2, 0);
   Text.Alignment := hpMiddle;
   Text.Size := 0.1;
@@ -85,13 +91,31 @@ begin
   Text.Collides := false;
   Transform.Add(Text);
 
+  Beh := TPlayerBehavior.Create(Transform);
+  Beh.Player := Self;
+  Scene.AddBehavior(Beh);
+
+  UpdateTransform;
+
   Viewport.Items.Add(Transform);
 end;
 
 procedure TPlayer.UpdateTransform;
+var
+  Alive: Boolean;
 begin
-  Transform.Translation := Position;
-  Transform.Direction := Direction;
+  if Transform = nil then // LocalPlayer has transform nil
+    Exit;
+
+  Alive := Life > 0;
+  Transform.Exists := Alive;
+  Text.Exists := Alive;
+  if Alive then
+  begin
+    Transform.Translation := Position;
+    Transform.Direction := Direction;
+    Text.Caption := Nick + Format(' (%d)', [Life]);
+  end;
 end;
 
 { TPlayerList ---------------------------------------------------------------- }

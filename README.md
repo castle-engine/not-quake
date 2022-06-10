@@ -34,8 +34,8 @@ Compile by entering `client` or `server` and build by:
 
 ## TODO
 
-show other players
+use speed predictions
+show proper anims based on speed
+use anim transition
 
-update other players pos/rot
-
-shoot other players
+see how it works over a real network

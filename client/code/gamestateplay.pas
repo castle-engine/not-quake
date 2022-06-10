@@ -20,7 +20,7 @@ interface
 
 uses Classes,
   CastleVectors, CastleUIState, CastleUIControls, CastleControls, CastleKeysMouse,
-  CastleViewport, CastleTimeUtils, CastleCameras, CastleTransform;
+  CastleViewport, CastleTimeUtils, CastleCameras, CastleTransform, CastleFlashEffect;
 
 type
   TStatePlay = class(TUIState)
@@ -31,10 +31,13 @@ type
     LabelControls: TCastleLabel;
     MainViewport: TCastleViewport;
     WalkNavigation: TCastleWalkNavigation;
+    LifeBar: TCastleRectangleControl;
+    RectDead: TCastleRectangleControl;
 
     WaitingForChat: Boolean;
     LastBroadcastState: TTimerResult;
     LastNickJoined: String;
+    HitFlash: TCastleFlashEffect;
 
     procedure NetworkLog(const Message: String);
     function CameraPositionToSend(const Camera: TCastleCamera): TVector3;
@@ -56,7 +59,7 @@ var
 implementation
 
 uses SysUtils,
-  CastleStringUtils, CastleLog, CastleUtils,
+  CastleStringUtils, CastleLog, CastleUtils, CastleColors,
   GameClient, NetworkCommon, GameStateMainMenu, GameStateInputChat, GamePlayers;
 
 constructor TStatePlay.Create(AOwner: TComponent);
@@ -105,6 +108,8 @@ begin
   MainViewport := DesignedComponent('MainViewport') as TCastleViewport;
   WalkNavigation := DesignedComponent('WalkNavigation') as TCastleWalkNavigation;
   LabelControls := DesignedComponent('LabelControls') as TCastleLabel;
+  LifeBar := DesignedComponent('LifeBar') as TCastleRectangleControl;
+  RectDead := DesignedComponent('RectDead') as TCastleRectangleControl;
 
   { avoid spawning everyone at same position }
   MainViewport.Camera.Translation := MainViewport.Camera.Translation + Vector3(
@@ -112,6 +117,9 @@ begin
     0,
     RandomFloatRange(-RandomSpawn, RandomSpawn)
   );
+
+  HitFlash := TCastleFlashEffect.Create(FreeAtStop);
+  MainViewport.InsertFront(HitFlash);
 
   NetworkInitialize;
   OnNetworkLog := {$ifdef FPC}@{$endif} NetworkLog;
@@ -125,7 +133,7 @@ begin
   LocalPlayer := TPlayer.Create;
   LocalPlayer.PlayerId := Random(1000 * 1000 * 1000); // TODO: we just assume everyone will choose different id
   LocalPlayer.Nick := PlayerNick;
-  LocalPlayer.Life := 10;
+  LocalPlayer.Life := MaxLife;
   LocalPlayer.Position := CameraPositionToSend(MainViewport.Camera);
   LocalPlayer.Direction := CameraDirectionToSend(MainViewport.Camera);
   // TODO: rest of TPlayer fill
@@ -158,7 +166,49 @@ procedure TStatePlay.Update(const SecondsPassed: Single; var HandleInput: Boolea
     M.PlayerId := LocalPlayer.PlayerId;
     M.Position := CameraPositionToSend(MainViewport.Camera);
     M.Direction := CameraDirectionToSend(MainViewport.Camera);
+    M.Life := LocalPlayer.Life;
     Client.SendMessage(M, true, -1);
+  end;
+
+  { TODO: all messages should be processed by HandleXxx }
+
+  procedure HandleHit(const M: TMessagePlayerHit);
+  var
+    ShooterPlayer, HitPlayer: TPlayer;
+  begin
+    HitPlayer := Players.FindPlayerId(TMessagePlayerHit(M).PlayerId);
+    if HitPlayer = nil then
+    begin
+      WritelnWarning('Cannot find player id being hit %d', [
+        M.PlayerId
+      ]);
+      Exit;
+    end;
+
+    ShooterPlayer := Players.FindPlayerId(TMessagePlayerHit(M).ShooterPlayerId);
+    if ShooterPlayer = nil then
+    begin
+      WritelnWarning('Cannot find player id of shooter %d', [
+        M.ShooterPlayerId
+      ]);
+      Exit;
+    end;
+
+    HitPlayer.Life := HitPlayer.Life - 1;
+    if HitPlayer.Life = 0 then
+      NetworkLog(Format('%s was killed by %s', [HitPlayer.Nick, ShooterPlayer.Nick]));
+    HitPlayer.UpdateTransform;
+    if HitPlayer = LocalPlayer then
+    begin
+      LifeBar.Exists := HitPlayer.Life > 0; // avoid WidthFraction = 0 meaning "ignore WidthFraction"
+      LifeBar.WidthFraction := HitPlayer.Life / MaxLife;
+      HitFlash.Flash(Red, true);
+      if HitPlayer.Life <= 0 then
+      begin
+        RectDead.Exists := true;
+        WalkNavigation.MoveSpeed := 0; // do not allow movement anymore, but allow rotations
+      end;
+    end;
   end;
 
 const
@@ -187,6 +237,7 @@ begin
         NewPlayer.Nick := LastNickJoined;
         NewPlayer.PlayerId := TMessagePlayerJoin(M).PlayerId;
         NewPlayer.CreateTransform(MainViewport);
+        NewPlayer.Life := MaxLife; // will be updated by TMessagePlayerState
         Players.Add(NewPlayer);
         WritelnLog('Joined player %s (%d)', [
           NewPlayer.Nick,
@@ -214,12 +265,16 @@ begin
           OldPlayer.PositionDelta := TMessagePlayerState(M).PositionDelta;
           OldPlayer.Direction := TMessagePlayerState(M).Direction;
           OldPlayer.DirectionDelta := TMessagePlayerState(M).DirectionDelta;
+          OldPlayer.Life := TMessagePlayerState(M).Life;
           OldPlayer.UpdateTransform;
         end else
           WritelnWarning('Cannot find player id sending state %d', [
             TMessagePlayerState(M).PlayerId
           ]);
       end else
+      if M is TMessagePlayerHit then
+        HandleHit(TMessagePlayerHit(M))
+      else
       begin
         NetworkLog('Received unhandled message: ' + M.ClassName);
       end;
@@ -236,12 +291,43 @@ begin
 end;
 
 function TStatePlay.Press(const Event: TInputPressRelease): Boolean;
+
+  procedure SendHit(const HitPlayer: TPlayer);
+  var
+    M: TMessagePlayerHit;
+  begin
+    M := TMessagePlayerHit.Create;
+    M.PlayerId := HitPlayer.PlayerId;
+    M.ShooterPlayerId := LocalPlayer.PlayerId;
+    Client.SendMessage(M, true, -1);
+
+    // also update HitPlayer locally, as we will not get TMessagePlayerHit about it
+    HitPlayer.Life := HitPlayer.Life - 1;
+    if HitPlayer.Life = 0 then
+      NetworkLog(Format('%s was killed by %s', [HitPlayer.Nick, LocalPlayer.Nick]));
+    HitPlayer.UpdateTransform;
+  end;
+
+var
+  HitTransform: TCastleTransform;
+  HitPlayer: TPlayerBehavior;
 begin
   Result := inherited;
   if Result then Exit; // allow the ancestor to handle keys
 
   if TUIState.CurrentTop = Self then
   begin
+    if Event.IsMouseButton(buttonLeft) then
+    begin
+      HitTransform := MainViewport.TransformUnderMouse;
+      if HitTransform <> nil then
+      begin
+        HitPlayer := HitTransform.FindBehavior(TPlayerBehavior) as TPlayerBehavior;
+        if HitPlayer <> nil then
+          SendHit(HitPlayer.Player);
+      end;
+      Exit(true); // key was handled
+    end;
     if Event.IsKey(CtrlQ) then
     begin
       TUIState.Current := StateMainMenu;

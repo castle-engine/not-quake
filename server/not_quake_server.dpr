@@ -34,6 +34,7 @@ type
     destructor Destroy; override;
   end;
 
+  // TODO: server should have more player knowledge, to pass position/life to joining players
   TPlayer = class
     PlayerId: TPlayerId;
     Nick: String;
