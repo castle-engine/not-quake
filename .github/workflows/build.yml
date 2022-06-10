@@ -39,8 +39,6 @@ jobs:
         run: cd client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=win64 --cpu=x86_64 --verbose
       - name: Package Windows Server
         run: cd server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=win64 --cpu=x86_64 --verbose
-      - name: Debug
-        run: ls -FlahR
       - name: Archive Artifacts
         # See https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v3
@@ -49,10 +47,9 @@ jobs:
           # Note: Keep paths that start with asterisk in double qoutes, to avoid misinterpreting as YAML reference.
           # See https://stackoverflow.com/questions/19109912/yaml-do-i-need-quotes-for-strings-in-yaml
           # https://yamlchecker.com/
-          # path: |
-          #   "client/*-win64-x86_64.zip"
-          #   "server/*-win64-x86_64.zip"
-          path: "client/*-win64-x86_64.zip"
+          path: |
+            client/*-win64-x86_64.zip
+            server/*-win64-x86_64.zip
           if-no-files-found: error
 
       - name: Package Linux Client
