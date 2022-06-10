@@ -33,6 +33,7 @@ type
 
     WaitingForChat: Boolean;
     LastBroadcastState: TTimerResult;
+    LastNickJoined: String;
 
     procedure NetworkLog(const Message: String);
   public
@@ -51,8 +52,8 @@ var
 implementation
 
 uses SysUtils,
-  CastleStringUtils,
-  GameClient, NetworkCommon, GameStateMainMenu, GameStateInputChat;
+  CastleStringUtils, CastleLog,
+  GameClient, NetworkCommon, GameStateMainMenu, GameStateInputChat, GamePlayers;
 
 constructor TStatePlay.Create(AOwner: TComponent);
 begin
@@ -60,16 +61,26 @@ begin
   DesignUrl := 'castle-data:/gamestateplay.castle-user-interface';
 end;
 
+const
+  // TODO: relying on such suffix is a hack to associate nick names
+  SJoinsSuffix = ' joins the game';
+
 procedure TStatePlay.Start;
 
   procedure SendJoin;
   var
+    MJ: TMessagePlayerJoin;
     M: TMessageChat;
   begin
-    // reuse TMessageChat, no dedicated TMessageJoin now
+    // reuse TMessageChat to pass nick
+    // TODO: this is poor to rely on 2 messages, and it depends on ordered channel - when reading we expect SJoinsSuffix in chat before TMessagePlayerJoin
     M := TMessageChat.Create;
-    M.Text := PlayerNick + ' joins the game';
+    M.Text := PlayerNick + SJoinsSuffix;
     Client.SendMessage(M, true, -1);
+
+    MJ := TMessagePlayerJoin.Create;
+    MJ.PlayerId := LocalPlayer.PlayerId;
+    Client.SendMessage(MJ, true, -1);
   end;
 
 begin
@@ -87,11 +98,26 @@ begin
   // TODO: LastBroadcastState := TTimerResult.Uninitialized;
   FillChar(LastBroadcastState, SizeOf(LastBroadcastState), 0);
 
+  LocalPlayer := TPlayer.Create;
+  LocalPlayer.PlayerId := Random(1000 * 1000 * 1000); // TODO: we just assume everyone will choose different id
+  LocalPlayer.Nick := PlayerNick;
+  LocalPlayer.Life := 10;
+  LocalPlayer.Position := MainViewport.Camera.WorldTranslation;
+  // TODO: rest of TPlayer fill
+
+  Players := TPlayerList.Create;
+  Players.Add(LocalPlayer);
+
   SendJoin;
 end;
 
 procedure TStatePlay.Stop;
 begin
+  // Note: don't bother sending TMessagePlayerDisconnect, server will do it automatically
+
+  FreeAndNil(Players);
+  LocalPlayer := nil; // freed alongside Players
+
   OnNetworkLog := nil;
   NetworkFinish;
   inherited;
@@ -112,6 +138,7 @@ const
   BroadcastStateTimeout = 0.1;
 var
   M: TMessage;
+  NewPlayer, OldPlayer: TPlayer;
 begin
   inherited;
   LabelFps.Caption := 'FPS: ' + Container.Fps.ToString;
@@ -122,10 +149,38 @@ begin
     for M in Client.Received do
     begin
       if M is TMessageChat then
-        NetworkLog('Chat: ' + TMessageChat(M).Text)
-      else
+      begin
+        NetworkLog('Chat: ' + TMessageChat(M).Text);
+        if IsSuffix(SJoinsSuffix, TMessageChat(M).Text, false) then
+          LastNickJoined := SuffixRemove(SJoinsSuffix, TMessageChat(M).Text, false);
+      end else
+      if M is TMessagePlayerJoin then
+      begin
+        NewPlayer := TPlayer.Create;
+        NewPlayer.Nick := LastNickJoined;
+        NewPlayer.PlayerId := TMessagePlayerJoin(M).PlayerId;
+        Players.Add(NewPlayer);
+        WritelnLog('Joined player %s (%d)', [
+          NewPlayer.Nick,
+          NewPlayer.PlayerId
+        ]);
+      end else
+      if M is TMessagePlayerDisconnect then
+      begin
+        OldPlayer := Players.FindPlayerId(TMessagePlayerDisconnect(M).PlayerId);
+        if OldPlayer <> nil then
+        begin
+          NetworkLog(Format('%s disconnected', [OldPlayer.Nick]));
+          Players.Remove(OldPlayer); // TODO remove by index, faster
+        end else
+          WritelnWarning('Cannot find disconnecting player id %d', [
+            TMessagePlayerDisconnect(M).PlayerId
+          ]);
+      end else
+      begin
         // TODO
-        NetworkLog('Received unhandled message: ' + M.ClassName);
+        //NetworkLog('Received unhandled message: ' + M.ClassName);
+      end;
     end;
     Client.Received.Clear;
   finally Client.ReceivedCs.Release end;

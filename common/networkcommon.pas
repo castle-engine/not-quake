@@ -24,10 +24,17 @@ type
     class function TryDeserialize(const RnlMessage: TRNLMessage): TMessage;
   end;
 
-  // TMessagePlayerJoin = class
-  //   Nick: String;
-  //   PeerId: Integer;
-  // end;
+  TMessagePlayerJoin = class(TMessage)
+    PlayerId: Int32;
+    class function TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerJoin;
+    procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
+  end;
+
+  TMessagePlayerDisconnect = class(TMessage)
+    PlayerId: Int32;
+    class function TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerDisconnect;
+    procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
+  end;
 
   TMessagePlayerState = class(TMessage)
   public
@@ -180,6 +187,10 @@ begin
   if Result <> nil then Exit;
   Result := TMessagePlayerShoot.TryDeserialize(RnlMessage);
   if Result <> nil then Exit;
+  Result := TMessagePlayerJoin.TryDeserialize(RnlMessage);
+  if Result <> nil then Exit;
+  Result := TMessagePlayerDisconnect.TryDeserialize(RnlMessage);
+  if Result <> nil then Exit;
   // add more messages here...
   Result := TMessageChat.TryDeserialize(RnlMessage);
   if Result <> nil then Exit;
@@ -190,6 +201,8 @@ end;
 const
   IdPlayerState = 8217832;
   IdPlayerShoot = 2376;
+  IdPlayerJoin = 9234;
+  IdPlayerDisconnect = 5122323;
 
 type
   TRecPlayerState = packed record
@@ -263,6 +276,74 @@ var
   Rec: TRecPlayerShoot;
 begin
   Rec.MessageId := IdPlayerShoot;
+  Rec.PlayerId := PlayerId;
+  RnlChannel.SendMessageData(@Rec, SizeOf(Rec));
+end;
+
+{ TMessagePlayerJoin -------------------------------------------------------- }
+
+type
+  TRecPlayerJoin = packed record
+    MessageId: Int32;
+    PlayerId: Int32;
+  end;
+  PRecPlayerJoin = ^TRecPlayerJoin;
+
+class function TMessagePlayerJoin.TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerJoin;
+var
+  Rec: TRecPlayerJoin;
+begin
+  Result := nil;
+  if RnlMessage.DataLength = SizeOf(TRecPlayerJoin) then
+  begin
+    Rec := PRecPlayerJoin(RnlMessage.Data)^;
+    if Rec.MessageId = IdPlayerJoin then
+    begin
+      Result := TMessagePlayerJoin.Create;
+      Result.PlayerId := Rec.PlayerId;
+    end;
+  end
+end;
+
+procedure TMessagePlayerJoin.SendSerialized(const RnlChannel: TRNLPeerChannel);
+var
+  Rec: TRecPlayerJoin;
+begin
+  Rec.MessageId := IdPlayerJoin;
+  Rec.PlayerId := PlayerId;
+  RnlChannel.SendMessageData(@Rec, SizeOf(Rec));
+end;
+
+{ TMessagePlayerDisconnect -------------------------------------------------------- }
+
+type
+  TRecPlayerDisconnect = packed record
+    MessageId: Int32;
+    PlayerId: Int32;
+  end;
+  PRecPlayerDisconnect = ^TRecPlayerDisconnect;
+
+class function TMessagePlayerDisconnect.TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerDisconnect;
+var
+  Rec: TRecPlayerDisconnect;
+begin
+  Result := nil;
+  if RnlMessage.DataLength = SizeOf(TRecPlayerDisconnect) then
+  begin
+    Rec := PRecPlayerDisconnect(RnlMessage.Data)^;
+    if Rec.MessageId = IdPlayerDisconnect then
+    begin
+      Result := TMessagePlayerDisconnect.Create;
+      Result.PlayerId := Rec.PlayerId;
+    end;
+  end
+end;
+
+procedure TMessagePlayerDisconnect.SendSerialized(const RnlChannel: TRNLPeerChannel);
+var
+  Rec: TRecPlayerDisconnect;
+begin
+  Rec.MessageId := IdPlayerDisconnect;
   Rec.PlayerId := PlayerId;
   RnlChannel.SendMessageData(@Rec, SizeOf(Rec));
 end;
