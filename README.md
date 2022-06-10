@@ -60,5 +60,3 @@ Compile by entering `client` or `server` and build by:
 use speed predictions
 show proper anims based on speed
 use anim transition
-
-see how it works over a real network
