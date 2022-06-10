@@ -3,9 +3,9 @@ unit NetworkCommon;
 
 interface
 
-uses SysUtils, Classes, SyncObjs,
+uses SysUtils, Classes, SyncObjs, Generics.Collections,
   RNL,
-  CastleLog, CastleApplicationProperties;
+  CastleLog, CastleApplicationProperties, CastleVectors;
 
 { Call these from any thread (main or not) to report something. }
 procedure ConsoleOutput(const s:string);
@@ -15,21 +15,56 @@ procedure LogThreadException(const aThreadName:string;const aException:TObject);
 procedure FlushConsoleOutput;
 
 type
+  TMessage = class
+  private
+    RecipientPeerId: Integer; //< Only used for messages scheduled to send from this process
+  end;
+
+  // TMessagePlayerJoin = class
+  //   Nick: String;
+  //   PeerId: Integer;
+  // end;
+
+  TMessagePlayerState = class(TMessage)
+  public
+    Position, PositionDelta: TVector3;
+    Rotation, RotationDelta: Single;
+    Life: Byte;
+  end;
+
+  TMessagePlayerShoot = class(TMessage)
+  public
+    PeerId: Integer;
+  end;
+
+  TMessageChat = class(TMessage)
+  public
+    Text: String;
+  end;
+
+  TMessageList = {$ifdef FPC}specialize{$endif} TObjectList<TMessage>;
+
   TNetworkingThread = class(TThread)
   private
     ToSendCs: TCriticalSection;
-    ToSend: TStringList;
+    ToSend: TMessageList;
   protected
     { Send scheduled messages.
       Call this often in this thread. }
-    procedure ProcessMessages(const Host: TRNLHost);
+    procedure ProcessMessagesToSend(const Host: TRNLHost);
+    { Call in this thread when new message is received.
+      M becomes owned by this object. }
+    procedure ProcessMessageReceived(const M: TMessage);
   public
+    { Protect access to Received using this critical section. }
+    ReceivedCs: TCriticalSection;
+    Received: TMessageList;
     constructor Create(const aCreateSuspended: Boolean);
     destructor Destroy; override;
-    { Send a message to remote.
+    { Send a message to remote. M becomes owned by this object.
       Can be used from other thread than this.
       PeerId = -1 means "broadcast to all peers". }
-    procedure SendMessage(const PeerId: Integer; const S: String);
+    procedure SendMessage(const PeerId: Integer; const M: TMessage);
   end;
 
 var
@@ -116,7 +151,9 @@ end;
 constructor TNetworkingThread.Create(const aCreateSuspended: Boolean);
 begin
   ToSendCs := TCriticalSection.Create; // protects ToSend
-  ToSend := TStringList.Create;
+  ToSend := TMessageList.Create(true);
+  ReceivedCs := TCriticalSection.Create; // protects Received
+  Received := TMessageList.Create(true);
   inherited Create(aCreateSuspended);
 end;
 
@@ -125,39 +162,55 @@ begin
   inherited;
   FreeAndNil(ToSend);
   FreeAndNil(ToSendCs);
+  FreeAndNil(Received);
+  FreeAndNil(ReceivedCs);
 end;
 
-procedure TNetworkingThread.SendMessage(const PeerId: Integer; const S: String);
+procedure TNetworkingThread.SendMessage(const PeerId: Integer; const M: TMessage);
 begin
   ToSendCs.Acquire;
   try
-    ToSend.AddObject(S, TObject(Pointer(PtrInt(PeerId))));
+    M.RecipientPeerId := PeerId;
+    ToSend.Add(M);
   finally ToSendCs.Release end;
 end;
 
-procedure TNetworkingThread.ProcessMessages(const Host: TRNLHost);
+procedure TNetworkingThread.ProcessMessagesToSend(const Host: TRNLHost);
 var
   Peer: TRNLPeer;
+  M: TMessage;
   S: String;
-  PeerId, I: Integer;
 begin
   ToSendCs.Acquire;
   try
     if ToSend.Count <> 0 then
     begin
-      for I := 0 to ToSend.Count - 1 do
+      for M in ToSend do
       begin
-        S := ToSend[I];
-        PeerId := PtrInt(ToSend.Objects[I]);
-        ConsoleOutput(Format('Sending "%s" to %d', [S, PeerId]));
+        if M is TMessageChat then
+          S := TMessageChat(M).Text
+        else
+          S := 'Not supported message: ' + M.ClassName;
+
+        //ConsoleOutput(Format('Sending "%s" to %d', [S, M.RecipientPeerId]));
+
         for Peer in Host.Peers do
-          if (PeerId = Peer.LocalPeerID) or
-             (PeerId = -1) then
+          if (M.RecipientPeerId = -1) or
+             (M.RecipientPeerId = Peer.LocalPeerID) then
             Peer.Channels[0].SendMessageString(S);
       end;
+      Host.Flush;
       ToSend.Clear;
     end;
   finally ToSendCs.Release end;
+end;
+
+procedure TNetworkingThread.ProcessMessageReceived(const M: TMessage);
+begin
+  ReceivedCs.Acquire;
+  try
+    Received.Add(M);
+  finally ReceivedCs.Release end;
 end;
 
 { initialization / finalization ---------------------------------------------- }

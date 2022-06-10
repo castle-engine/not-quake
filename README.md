@@ -20,4 +20,8 @@ Compile by entering `client` or `server` and build by:
 
 ## TODO
 
-Console capture and display in GUI client.
+pass binary messages, handle all message types
+
+send messages to people *except* this one, to not broadcast back
+
+input any chat msg

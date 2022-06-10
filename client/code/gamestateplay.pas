@@ -28,6 +28,7 @@ type
     LabelFps: TCastleLabel;
     LabelNetworkLog: TCastleLabel;
     procedure NetworkLog(const Message: String);
+    procedure SendChat(const S: String);
   public
     PlayerNick: String; //< Set before starting state
     constructor Create(AOwner: TComponent); override;
@@ -52,6 +53,15 @@ begin
   DesignUrl := 'castle-data:/gamestateplay.castle-user-interface';
 end;
 
+procedure TStatePlay.SendChat(const S: String);
+var
+  M: TMessageChat;
+begin
+  M := TMessageChat.Create;
+  M.Text := S;
+  Client.SendMessage(-1, M);
+end;
+
 procedure TStatePlay.Start;
 begin
   inherited;
@@ -61,7 +71,8 @@ begin
 
   NetworkInitialize;
   OnNetworkLog := {$ifdef FPC}@{$endif} NetworkLog;
-  Client.SendMessage(-1, PlayerNick + ' joins the game');
+
+  SendChat(PlayerNick + ' joins the game');
 end;
 
 procedure TStatePlay.Stop;
@@ -72,10 +83,25 @@ begin
 end;
 
 procedure TStatePlay.Update(const SecondsPassed: Single; var HandleInput: Boolean);
+var
+  M: TMessage;
 begin
   inherited;
   LabelFps.Caption := 'FPS: ' + Container.Fps.ToString;
   FlushConsoleOutput;
+
+  Client.ReceivedCs.Acquire;
+  try
+    for M in Client.Received do
+    begin
+      if M is TMessageChat then
+        NetworkLog('Chat: ' + TMessageChat(M).Text)
+      else
+        // TODO
+        NetworkLog('Received unhandled message: ' + M.ClassName);
+    end;
+    Client.Received.Clear;
+  finally Client.ReceivedCs.Release end;
 end;
 
 function TStatePlay.Press(const Event: TInputPressRelease): Boolean;
@@ -83,9 +109,10 @@ begin
   Result := inherited;
   if Result then Exit; // allow the ancestor to handle keys
 
-  if Event.IsKey(keySpace) then
+  if Event.IsKey(key1) then
   begin
-    Client.SendMessage(-1, 'Hello from GUI client in CGE');
+    // TODO: proper chat
+    SendChat(PlayerNick + ' says "1"');
     Exit(true); // key was handled
   end;
   if Event.IsKey(CtrlQ) then

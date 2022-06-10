@@ -52,11 +52,13 @@ var
   RNLNetwork:TRNLNetwork=nil;
 
 procedure TClient.Execute;
-var Address:TRNLAddress;
-    Client:TRNLHost;
-    Event:TRNLHostEvent;
-    Peer:TRNLPeer;
-    Disconnected:boolean;
+var
+  Address:TRNLAddress;
+  Client:TRNLHost;
+  Event:TRNLHostEvent;
+  Peer:TRNLPeer;
+  Disconnected:boolean;
+  M: TMessageChat;
 const
   { Decrease to send our messages, and check for received messages, more often.
     Value = 0 is OK: RNL code says it will do then "one iteration without waiting". }
@@ -131,14 +133,18 @@ begin
              RNL_HOST_EVENT_TYPE_PEER_MTU:begin
               ConsoleOutput('Client: New MTU '+IntToStr(TRNLPtrUInt(Event.MTU)));
              end;
-             RNL_HOST_EVENT_TYPE_PEER_RECEIVE:begin
+             RNL_HOST_EVENT_TYPE_PEER_RECEIVE:
+             begin
               ConsoleOutput('Client: A message received on channel '+IntToStr(Event.Channel)+': "'+String(Event.Message.AsString)+'"');
+              M := TMessageChat.Create; // TODO: creates TMessageChat always
+              M.Text := Event.Message.AsString;
+              ProcessMessageReceived(M);
              end;
             end;
            finally
             Event.Free;
            end;
-           ProcessMessages(Client);
+           ProcessMessagesToSend(Client);
           end;
           if not Disconnected then begin
            ConsoleOutput('Client: Disconnecting');

@@ -52,13 +52,15 @@ begin
 end;
 
 procedure TServer.Execute;
-var //Address:TRNLAddress;
-    Server:TRNLHost;
-    Event:TRNLHostEvent;
 const
   { Decrease to send our messages, and check for received messages, more often.
     Value = 0 is OK: RNL code says it will do then "one iteration without waiting". }
   NormalTimeout = 10;
+var
+  //Address:TRNLAddress;
+  Server:TRNLHost;
+  Event:TRNLHostEvent;
+  M: TMessageChat;
 begin
 {$ifndef fpc}
  NameThreadForDebugging('Server');
@@ -103,7 +105,7 @@ begin
                              [Event.Peer.LocalPeerID,
                               Event.Peer.RemotePeerID,
                               Event.Peer.CountChannels]));
-        Event.Peer.Channels[0].SendMessageString('Hello world from server!');
+        //Event.Peer.Channels[0].SendMessageString('Hello world from server!');
   //    Server.Flush;
        end;
        RNL_HOST_EVENT_TYPE_PEER_DISCONNECT:begin
@@ -117,12 +119,23 @@ begin
        end;
        RNL_HOST_EVENT_TYPE_PEER_RECEIVE:begin
         ConsoleOutput('Server: A message received on channel '+IntToStr(Event.Channel)+': "'+String(Event.Message.AsString)+'" from ' + IntToStr(Event.Peer.LocalPeerID));
+
+        M := TMessageChat.Create; // TODO: creates TMessageChat always
+        M.Text := Event.Message.AsString;
+
+        //ProcessMessageReceived(M);
+        // Just process the message immediately in this thread:
+
+        if M.Text = 'Hello world from client!' then
+          FreeAndNil(M) // do not broadcast this
+        else
+          SendMessage(-1, M);
        end;
       end;
      finally
       Event.Free;
      end;
-     ProcessMessages(Server);
+     ProcessMessagesToSend(Server);
     end;
    finally
     Event.Finalize;
