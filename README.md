@@ -1,20 +1,39 @@
-# not-quake
+# Not Quake: Online multi-player first-person shooter using Castle Game Engine and RNL.
 
-Online first-person shooter using Castle Game Engine and RNL.
+Features:
+
+- Choose your nick,
+- join a server game,
+- send chat messages to everyone,
+- move, shoot, die, repeat.
+
+This is a demo of integrating
+
+- [Castle Game Engine](https://castle-engine.io/) - 3D and 2D open-source game engine using Object Pascal,
+- [RNL](https://github.com/BeRo1985/rnl) - real-time networking library, open source, using Object Pascal
+
+... to create a simple FPS in 3D online.
 
 Client keys:
 
 - `/` to send chat (type whatever, press `Enter` to send, `Escape` to cancel)
-
 - `Ctrl + Q` to go back to main menu
-
-- `Escape` to toggle mouse look on/off
-
+- `Escape` to toggle mouse look on/off (esp. useful to switch to other applications while playing)
 - AWSD, arrow keys, rotate with mouse (when mouse look) to move/rotate
-
+- `Shift` to run
 - `Left click` to shoot
 
-Done for gamejam in Cat-astrophe Games on 2022-06-10. Plans: https://docs.google.com/document/d/18TMnuJfNZQVhCodwymMnAqt9yUw5070KzoEyz8LA204/edit?usp=sharing
+Done for our gamejam at Cat-astrophe Games on 2022-06-10.
+
+For desktops -- using GitHub actions to build for Linux, Windows, macOS, and (probably unplayable due to missing special input code) Android.
+
+## Architecture
+
+Central server on https://michalis.xyz/ (likewise developed using RNL, with some code shared with frontend), I will keep it running throughout the gamejam and probably much longer. Each frontend is just a client to this server.
+
+You run the game, you input your nick (honestly anything), and you join the game -- essentially one common "room" for all players.
+
+Plans: https://docs.google.com/document/d/18TMnuJfNZQVhCodwymMnAqt9yUw5070KzoEyz8LA204/edit?usp=sharing
 
 ## Code
 
@@ -57,10 +76,38 @@ Compile by entering `client` or `server` and build by:
 
 ## TODO
 
-use speed predictions
-show proper anims based on speed
-use anim transition
+- Use speed predictions to move other players (will allow to update state less often?). I planned this for gamejam, but didn't manage.
 
-test on windows
-macos
-android
+- Test all platforms:
+    - Windows server
+    - macOS client and server
+    - Android client
+
+- Do more network performance testing.
+    - There are various timeouts to test. Like BroadcastTimeout, NormalTimeout,
+    - RNL also has easy switches to go between reliable/unreliable, ordered/unordered messages.
+
+- Make input on Android work too.
+
+- Rooms within the server. Before joining, you can list/create/join a room. Each room is a separate play.
+
+- Sounds of hit / miss.
+
+- Cut down to find source of occasional crash in server, for now workarounded:
+
+    ```
+    try
+      if PayloadData = nil then
+        Writeln('PayloadData = nil');
+      if NormalPacketHeader = nil then
+        Writeln('NormalPacketHeader = nil');
+      DispatchIncomingPacket(PayloadData^,
+                             PayloadDataLength,
+                             TRNLEndianness.LittleEndianToHost16(NormalPacketHeader^.SentTime));
+    except
+      on E: EAccessViolation do
+        Writeln('Caught EAccessViolation around DispatchIncomingPacket, silencing'); // TODO: reproduce, report
+    end;
+    ```
+
+- Big: Turn this into generic network that can auto-synchronize TCastleViewport or TCastleTransform or other TCastleComponent state "automagically" over the network.
