@@ -19,7 +19,8 @@ unit GamePlayers;
 interface
 
 uses Generics.Collections,
-  CastleVectors, NetworkCommon;
+  CastleVectors, CastleTransform, CastleViewport, CastleScene,
+  NetworkCommon;
 
 type
   TPlayer = class
@@ -28,6 +29,9 @@ type
     Position, PositionDelta: TVector3;
     Rotation, RotationDelta: Single;
     Life: Byte;
+    Transform: TCastleTransform;
+    procedure CreateTransform(const Viewport: TCastleViewport);
+    destructor Destroy; override;
   end;
 
   TPlayerList = class({$ifdef FPC}specialize{$endif} TObjectList<TPlayer>)
@@ -43,6 +47,46 @@ var
 
 implementation
 
+uses SysUtils,
+  CastleUIControls, CastleColors, X3DLoad, X3DNodes;
+
+var
+  AvatarRoot: TX3DRootNode;
+
+{ TPlayer -------------------------------------------------------------------- }
+
+destructor TPlayer.Destroy;
+begin
+  FreeAndNil(Transform); // will also remove it from Viewport
+  inherited;
+end;
+
+procedure TPlayer.CreateTransform(const Viewport: TCastleViewport);
+var
+  Scene: TCastleScene;
+  Text: TCastleText;
+begin
+  Transform := TCastleTransform.Create(Viewport);
+  Transform.Translation := Position;
+
+  Scene := TCastleScene.Create(Transform);
+  Scene.Load(AvatarRoot.DeepCopy as TX3DRootNode, true);
+  Scene.PlayAnimation('idle', true);
+  Transform.Add(Scene);
+
+  Text := TCastleText.Create(Transform);
+  Text.Caption := Nick;
+  Text.Translation := Vector3(0, 2, 0);
+  Text.Alignment := hpMiddle;
+  Text.Size := 0.1;
+  Text.Color := Blue;
+  Transform.Add(Text);
+
+  Viewport.Items.Add(Transform);
+end;
+
+{ TPlayerList ---------------------------------------------------------------- }
+
 function TPlayerList.FindPlayerId(const PlayerId: TPlayerId): TPlayer;
 var
   P: TPlayer;
@@ -53,4 +97,10 @@ begin
   Result := P;
 end;
 
+initialization
+  { Reading it once is not only an optimization, it also prevents problems when testing locally
+    and multiple clients try to read the same file. }
+  AvatarRoot := LoadNode('castle-data:/avatar/avatar.gltf');
+finalization
+  FreeAndNil(AvatarRoot);
 end.

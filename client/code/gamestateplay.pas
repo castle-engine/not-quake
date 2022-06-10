@@ -156,6 +156,7 @@ begin
         NewPlayer := TPlayer.Create;
         NewPlayer.Nick := LastNickJoined;
         NewPlayer.PlayerId := TMessagePlayerJoin(M).PlayerId;
+        NewPlayer.CreateTransform(MainViewport);
         Players.Add(NewPlayer);
         WritelnLog('Joined player %s (%d)', [
           NewPlayer.Nick,
@@ -175,7 +176,7 @@ begin
           ]);
       end else
       begin
-        // TODO
+        // TODO update player info
         //NetworkLog('Received unhandled message: ' + M.ClassName);
       end;
     end;
