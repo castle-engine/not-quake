@@ -1,6 +1,21 @@
-{$ifdef MSWINDOWS} {$apptype CONSOLE} {$endif}
+{
+  Copyright 2022-2022 Michalis Kamburelis, Benjamin Rosseaux.
 
-{$mode delphi}
+  This file is part of "Not Quake".
+
+  "Not Quake" is free software; see the file LICENSE,
+  included in this distribution, for details about the copyright.
+
+  "Not Quake" is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+  ----------------------------------------------------------------------------
+}
+
+{ "Not Quake" dedicated server. Based on RNL example. }
+
+{$ifdef MSWINDOWS} {$apptype CONSOLE} {$endif}
 
 uses
   {$ifdef unix}
@@ -56,10 +71,10 @@ begin
  try
   Server:=TRNLHost.Create(RNLInstance,RNLNetwork);
   try
-   Server.Address.Host:=RNL_HOST_ANY;
-   Server.Address.Port:=64242;
+   Server.Address^.Host:=RNL_HOST_ANY;
+   Server.Address^.Port:=64242;
 {  RNLNetwork.AddressSetHost(Server.Address^,'127.0.0.1');
-   Server.Address.Port:=64242;{}
+   Server.Address.Port:=64242;}
    Server.Compressor:=RNLCompressorClass.Create;
    Server.MaximumCountPeers := 1000; // no peer limit in this simple demo, disregard possible server load
    Server.MaximumCountChannels:=4;
@@ -78,13 +93,13 @@ begin
        RNL_HOST_EVENT_TYPE_PEER_CHECK_CONNECTION_TOKEN:begin
         if assigned(Event.ConnectionCandidate) then begin
          ConsoleOutput('Server: A new client is connecting');
-         Event.ConnectionCandidate.AcceptConnectionToken;
+         Event.ConnectionCandidate^.AcceptConnectionToken;
         end;
        end;
        RNL_HOST_EVENT_TYPE_PEER_CHECK_AUTHENTICATION_TOKEN:begin
         if assigned(Event.ConnectionCandidate) then begin
          ConsoleOutput('Server: A new client is authenticating');
-         Event.ConnectionCandidate.AcceptAuthenticationToken;
+         Event.ConnectionCandidate^.AcceptAuthenticationToken;
         end;
        end;
        RNL_HOST_EVENT_TYPE_PEER_CONNECT:begin
