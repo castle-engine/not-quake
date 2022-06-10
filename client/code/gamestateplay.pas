@@ -43,7 +43,8 @@ var
 implementation
 
 uses SysUtils,
-  GameClient, NetworkCommon;
+  CastleStringUtils,
+  GameClient, NetworkCommon, GameStateMainMenu;
 
 constructor TStatePlay.Create(AOwner: TComponent);
 begin
@@ -85,6 +86,11 @@ begin
   if Event.IsKey(keySpace) then
   begin
     Client.SendMessage(-1, 'Hello from GUI client in CGE');
+    Exit(true); // key was handled
+  end;
+  if Event.IsKey(CtrlQ) then
+  begin
+    TUIState.Current := StateMainMenu;
     Exit(true); // key was handled
   end;
 end;

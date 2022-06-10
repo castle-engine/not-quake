@@ -32,6 +32,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure Start; override;
+    procedure Stop; override;
     procedure Update(const SecondsPassed: Single; var HandleInput: Boolean); override;
     function Press(const Event: TInputPressRelease): Boolean; override;
   end;
@@ -61,8 +62,16 @@ begin
   EditNick := DesignedComponent('EditNick') as TCastleEdit;
   ButtonJoin := DesignedComponent('ButtonJoin') as TCastleButton;
 
+  StateContainer.ForceCaptureInput := EditNick; // make key presses go to edit first
+
   EditNick.Text := 'Viper' + IntToStr(Random(1000));
   ButtonJoin.OnClick := {$ifdef FPC}@{$endif} ClickJoin;
+end;
+
+procedure TStateMainMenu.Stop;
+begin
+  StateContainer.ForceCaptureInput := nil;
+  inherited;
 end;
 
 procedure TStateMainMenu.Update(const SecondsPassed: Single; var HandleInput: Boolean);

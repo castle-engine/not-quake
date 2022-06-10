@@ -113,8 +113,8 @@
       "$$ClassName" : "TCastleLabel",
       "ColorPersistent" : {
         "$$ClassName" : "TCastleColorPersistent",
-        "Blue" : 1.0000000000000000E+000,
-        "Green" : 1.0000000000000000E+000
+        "Blue" : 3.6078432202339172E-001,
+        "Green" : 3.6078432202339172E-001
       },
       "HorizontalAnchorDelta" : 1.0000000000000000E+001,
       "Name" : "LabelNetworkLog",
