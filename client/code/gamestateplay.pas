@@ -282,7 +282,9 @@ procedure TStatePlay.Update(const SecondsPassed: Single; var HandleInput: Boolea
 
   procedure HandlePing(const M: TMessagePing);
   begin
-    LabelPing.Caption := Format('Ping (round-trip to server): %f', [M.ClientSendTime.ElapsedTime]);
+    LabelPing.Caption := Format('Ping (miilsec): %d', [
+      Round(M.ClientSendTime.ElapsedTime * 1000)
+    ]);
   end;
 
 const

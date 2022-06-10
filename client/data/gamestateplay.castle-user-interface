@@ -303,7 +303,7 @@
       "HorizontalAnchorSelf" : "hpRight",
       "Name" : "LabelPing",
       "Text" : [
-        "Ping: ..."
+        "Ping (miilsec): ..."
       ],
       "VerticalAnchorDelta" : -5.0000000000000000E+001,
       "VerticalAnchorParent" : "vpTop",
