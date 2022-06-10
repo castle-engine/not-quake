@@ -1,4 +1,6 @@
-# Not Quake: Online multi-player first-person shooter using Castle Game Engine and RNL.
+# Not Quake
+
+**Online multi-player first-person shooter using Castle Game Engine and RNL.**
 
 Features:
 
@@ -23,7 +25,7 @@ Client keys:
 - `Shift` to run
 - `Left click` to shoot
 
-Done for our gamejam at Cat-astrophe Games on 2022-06-10.
+Done during our gamejam at _Cat-astrophe Games_ on 2022-06-10. **Done in 1 day.**
 
 For desktops -- using GitHub actions to build for Linux, Windows, macOS, and (probably unplayable due to missing special input code) Android.
 
@@ -33,9 +35,9 @@ Central server on https://michalis.xyz/ (likewise developed using RNL, with some
 
 You run the game, you input your nick (honestly anything), and you join the game -- essentially one common "room" for all players.
 
-Plans: https://docs.google.com/document/d/18TMnuJfNZQVhCodwymMnAqt9yUw5070KzoEyz8LA204/edit?usp=sharing
-
 ## Code
+
+Note that it relies on CGE [new-cameras" branch](https://github.com/castle-engine/castle-engine/tree/new-cameras) which is not yet merged to CGE master.
 
 Checkout with submodules.
 
