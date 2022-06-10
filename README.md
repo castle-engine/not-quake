@@ -28,4 +28,10 @@ Compile by entering `client` or `server` and build by:
 
 ## TODO
 
-pass binary messages, handle all message types
+known unique player ids
+
+show other players
+
+update other players pos/rot
+
+shoot other players

@@ -58,7 +58,7 @@ var
   Event:TRNLHostEvent;
   Peer:TRNLPeer;
   Disconnected:boolean;
-  M: TMessageChat;
+  M: TMessage;
 const
   { Decrease to send our messages, and check for received messages, more often.
     Value = 0 is OK: RNL code says it will do then "one iteration without waiting". }
@@ -135,10 +135,12 @@ begin
              end;
              RNL_HOST_EVENT_TYPE_PEER_RECEIVE:
              begin
-              ConsoleOutput('Client: A message received on channel '+IntToStr(Event.Channel)+': "'+String(Event.Message.AsString)+'"');
-              M := TMessageChat.Create; // TODO: creates TMessageChat always
-              M.Text := Event.Message.AsString;
-              ProcessMessageReceived(M);
+              //ConsoleOutput('Client: A message received on channel '+IntToStr(Event.Channel)+': "'+String(Event.Message.AsString)+'"');
+              M := TMessage.TryDeserialize(Event.Message);
+              if M <> nil then
+                ProcessMessageReceived(M)
+              else
+                ConsoleOutput('Unrecognized message received');
              end;
             end;
            finally

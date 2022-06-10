@@ -19,6 +19,9 @@ type
   private
     RecipientPeerId: Integer; //< Only used for messages scheduled to send from this process
     Broadcast: Boolean; //< Only used for messages scheduled to send from this process
+  public
+    procedure SendSerialized(const RnlChannel: TRNLPeerChannel); virtual; abstract;
+    class function TryDeserialize(const RnlMessage: TRNLMessage): TMessage;
   end;
 
   // TMessagePlayerJoin = class
@@ -31,16 +34,27 @@ type
     Position, PositionDelta: TVector3;
     Rotation, RotationDelta: Single;
     Life: Byte;
+    class function TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerState;
+    procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
   end;
 
   TMessagePlayerShoot = class(TMessage)
   public
-    PeerId: Integer;
+    { Player that got hit.
+      Don't confuse PlayerId (each player has unique id, known to all clients and server)
+      with PeerId that is specific to given connection client<->server. }
+    PlayerId: Integer;
+    class function TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerShoot;
+    procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
   end;
 
   TMessageChat = class(TMessage)
   public
     Text: String;
+    { Note: this is just String, deserialize it as a last resort.
+      TODO: chat message should have unique id. }
+    class function TryDeserialize(const RnlMessage: TRNLMessage): TMessageChat;
+    procedure SendSerialized(const RnlChannel: TRNLPeerChannel); override;
   end;
 
   TMessageList = {$ifdef FPC}specialize{$endif} TObjectList<TMessage>;
@@ -156,6 +170,116 @@ begin
 end;
 {$ifend}
 
+{ TMessage ------------------------------------------------------------------- }
+
+class function TMessage.TryDeserialize(const RnlMessage: TRNLMessage): TMessage;
+begin
+  { Try various TMessage descendants.
+    Try TMessageChat as last, as it always returns non-nil. }
+  Result := TMessagePlayerState.TryDeserialize(RnlMessage);
+  if Result <> nil then Exit;
+  Result := TMessagePlayerShoot.TryDeserialize(RnlMessage);
+  if Result <> nil then Exit;
+  // add more messages here...
+  Result := TMessageChat.TryDeserialize(RnlMessage);
+  if Result <> nil then Exit;
+end;
+
+{ TMessagePlayerState -------------------------------------------------------- }
+
+const
+  IdPlayerState = 8217832;
+  IdPlayerShoot = 2376;
+
+type
+  TRecPlayerState = packed record
+    MessageId: Int32;
+    Position, PositionDelta: TVector3;
+    Rotation, RotationDelta: Single;
+    Life: Byte;
+  end;
+  PRecPlayerState = ^TRecPlayerState;
+
+class function TMessagePlayerState.TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerState;
+var
+  Rec: TRecPlayerState;
+begin
+  Result := nil;
+  if RnlMessage.DataLength = SizeOf(TRecPlayerState) then
+  begin
+    Rec := PRecPlayerState(RnlMessage.Data)^;
+    if Rec.MessageId = IdPlayerState then
+    begin
+      Result := TMessagePlayerState.Create;
+      Result.Position      := Rec.Position;
+      Result.PositionDelta := Rec.PositionDelta;
+      Result.Rotation      := Rec.Rotation;
+      Result.RotationDelta := Rec.RotationDelta;
+      Result.Life          := Rec.Life;
+    end;
+  end
+end;
+
+procedure TMessagePlayerState.SendSerialized(const RnlChannel: TRNLPeerChannel);
+var
+  Rec: TRecPlayerState;
+begin
+  Rec.MessageId := IdPlayerState;
+  Rec.Position      := Position;
+  Rec.PositionDelta := PositionDelta;
+  Rec.Rotation      := Rotation;
+  Rec.RotationDelta := RotationDelta;
+  Rec.Life          := Life;
+  RnlChannel.SendMessageData(@Rec, SizeOf(Rec));
+end;
+
+{ TMessagePlayerShoot -------------------------------------------------------- }
+
+type
+  TRecPlayerShoot = packed record
+    MessageId: Int32;
+    PlayerId: Int32;
+  end;
+  PRecPlayerShoot = ^TRecPlayerShoot;
+
+class function TMessagePlayerShoot.TryDeserialize(const RnlMessage: TRNLMessage): TMessagePlayerShoot;
+var
+  Rec: TRecPlayerShoot;
+begin
+  Result := nil;
+  if RnlMessage.DataLength = SizeOf(TRecPlayerShoot) then
+  begin
+    Rec := PRecPlayerShoot(RnlMessage.Data)^;
+    if Rec.MessageId = IdPlayerShoot then
+    begin
+      Result := TMessagePlayerShoot.Create;
+      Result.PlayerId := Rec.PlayerId;
+    end;
+  end
+end;
+
+procedure TMessagePlayerShoot.SendSerialized(const RnlChannel: TRNLPeerChannel);
+var
+  Rec: TRecPlayerShoot;
+begin
+  Rec.MessageId := IdPlayerShoot;
+  Rec.PlayerId := PlayerId;
+  RnlChannel.SendMessageData(@Rec, SizeOf(Rec));
+end;
+
+{ TMessageChat --------------------------------------------------------------- }
+
+class function TMessageChat.TryDeserialize(const RnlMessage: TRNLMessage): TMessageChat;
+begin
+  Result := TMessageChat.Create;
+  Result.Text := RnlMessage.AsString;
+end;
+
+procedure TMessageChat.SendSerialized(const RnlChannel: TRNLPeerChannel);
+begin
+  RnlChannel.SendMessageString(Text);
+end;
+
 { TNetworkingThread ---------------------------------------------------------- }
 
 constructor TNetworkingThread.Create(const aCreateSuspended: Boolean);
@@ -190,7 +314,6 @@ procedure TNetworkingThread.ProcessMessagesToSend(const Host: TRNLHost);
 var
   Peer: TRNLPeer;
   M: TMessage;
-  S: String;
   Send: Boolean;
 begin
   ToSendCs.Acquire;
@@ -199,11 +322,6 @@ begin
     begin
       for M in ToSend do
       begin
-        if M is TMessageChat then
-          S := TMessageChat(M).Text
-        else
-          S := 'Not supported message: ' + M.ClassName;
-
         //ConsoleOutput(Format('Sending "%s" to %d', [S, M.RecipientPeerId]));
 
         for Peer in Host.Peers do
@@ -213,7 +331,7 @@ begin
           else
             Send := M.RecipientPeerId = Peer.LocalPeerID;
           if Send then
-            Peer.Channels[0].SendMessageString(S);
+            M.SendSerialized(Peer.Channels[0]);
         end;
       end;
       Host.Flush;

@@ -19,7 +19,8 @@ unit GameStatePlay;
 interface
 
 uses Classes,
-  CastleVectors, CastleUIState, CastleUIControls, CastleControls, CastleKeysMouse;
+  CastleVectors, CastleUIState, CastleUIControls, CastleControls, CastleKeysMouse,
+  CastleViewport, CastleTimeUtils;
 
 type
   TStatePlay = class(TUIState)
@@ -27,8 +28,11 @@ type
     { Components designed using CGE editor, loaded from the castle-user-interface file. }
     LabelFps: TCastleLabel;
     LabelNetworkLog: TCastleLabel;
+    MainViewport: TCastleViewport;
+    //TODO WalkNavigation: TCastleWalkNavigation;
 
     WaitingForChat: Boolean;
+    LastBroadcastState: TTimerResult;
 
     procedure NetworkLog(const Message: String);
   public
@@ -73,11 +77,15 @@ begin
   { Find components, by name, that we need to access from code }
   LabelFps := DesignedComponent('LabelFps') as TCastleLabel;
   LabelNetworkLog := DesignedComponent('LabelNetworkLog') as TCastleLabel;
+  MainViewport := DesignedComponent('MainViewport') as TCastleViewport;
 
   NetworkInitialize;
   OnNetworkLog := {$ifdef FPC}@{$endif} NetworkLog;
 
   WaitingForChat := false;
+
+  // TODO: LastBroadcastState := TTimerResult.Uninitialized;
+  FillChar(LastBroadcastState, SizeOf(LastBroadcastState), 0);
 
   SendJoin;
 end;
@@ -90,6 +98,18 @@ begin
 end;
 
 procedure TStatePlay.Update(const SecondsPassed: Single; var HandleInput: Boolean);
+
+  procedure SendPlayerState;
+  var
+    M: TMessagePlayerState;
+  begin
+    M := TMessagePlayerState.Create;
+    M.Position := MainViewport.Camera.WorldTranslation;
+    Client.SendMessage(M, true, -1);
+  end;
+
+const
+  BroadcastStateTimeout = 0.1;
 var
   M: TMessage;
 begin
@@ -109,6 +129,13 @@ begin
     end;
     Client.Received.Clear;
   finally Client.ReceivedCs.Release end;
+
+  if (not LastBroadcastState.Initialized) or
+     (LastBroadcastState.ElapsedTime > BroadcastStateTimeout) then
+  begin
+    SendPlayerState;
+    LastBroadcastState := Timer;
+  end;
 end;
 
 function TStatePlay.Press(const Event: TInputPressRelease): Boolean;

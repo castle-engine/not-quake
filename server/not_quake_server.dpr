@@ -60,7 +60,7 @@ var
   //Address:TRNLAddress;
   Server:TRNLHost;
   Event:TRNLHostEvent;
-  M: TMessageChat;
+  M: TMessage;
 begin
 {$ifndef fpc}
  NameThreadForDebugging('Server');
@@ -118,18 +118,25 @@ begin
         ConsoleOutput('Server: A client '+IntToStr(TRNLPtrUInt(Event.Peer))+' has new MTU '+IntToStr(TRNLPtrUInt(Event.MTU)));
        end;
        RNL_HOST_EVENT_TYPE_PEER_RECEIVE:begin
-        ConsoleOutput('Server: A message received on channel '+IntToStr(Event.Channel)+': "'+String(Event.Message.AsString)+'" from ' + IntToStr(Event.Peer.LocalPeerID));
+        //ConsoleOutput('Server: A message received on channel '+IntToStr(Event.Channel)+': "'+String(Event.Message.AsString)+'" from ' + IntToStr(Event.Peer.LocalPeerID));
 
-        M := TMessageChat.Create; // TODO: creates TMessageChat always
-        M.Text := Event.Message.AsString;
+        M := TMessage.TryDeserialize(Event.Message);
+        if M <> nil then
+        begin
+          //ProcessMessageReceived(M);
+          // Just process the message immediately in this thread:
 
-        //ProcessMessageReceived(M);
-        // Just process the message immediately in this thread:
+          // only log TMessageChat to avoid log flood
+          if M is TMessageChat then
+            ConsoleOutput('Server: A chat message received on channel '+IntToStr(Event.Channel)+': "'+String(TMessageChat(M).Text)+'" from ' + IntToStr(Event.Peer.LocalPeerID));
 
-        if M.Text = 'Hello world from client!' then
-          FreeAndNil(M) // do not broadcast this
-        else
-          SendMessage(M, true, Event.Peer.LocalPeerID); // broadcast, but not to originating client
+          if (M is TMessageChat) and
+             (TMessageChat(M).Text = 'Hello world from client!') then
+            FreeAndNil(M) // do not broadcast this
+          else
+            SendMessage(M, true, Event.Peer.LocalPeerID); // broadcast everything else, but not to originating client
+        end else
+          ConsoleOutput('Unrecognized message received');
        end;
       end;
      finally
