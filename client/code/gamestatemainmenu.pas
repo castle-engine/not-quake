@@ -28,6 +28,8 @@ type
   private
     { Components designed using CGE editor, loaded from gamestatemainmenu.castle-user-interface. }
     LabelFps: TCastleLabel;
+    LabelNetworkLog: TCastleLabel;
+    procedure NetworkLog(const Message: String);
   public
     constructor Create(AOwner: TComponent); override;
     procedure Start; override;
@@ -42,7 +44,7 @@ var
 implementation
 
 uses SysUtils,
-  GameClient;
+  GameClient, NetworkCommon;
 
 { TStateMainMenu ----------------------------------------------------------------- }
 
@@ -58,7 +60,9 @@ begin
 
   { Find components, by name, that we need to access from code }
   LabelFps := DesignedComponent('LabelFps') as TCastleLabel;
+  LabelNetworkLog := DesignedComponent('LabelNetworkLog') as TCastleLabel;
   NetworkInitialize;
+  OnNetworkLog := {$ifdef FPC}@{$endif} NetworkLog;
 end;
 
 procedure TStateMainMenu.Stop;
@@ -84,6 +88,15 @@ begin
     Client.SendMessage(-1, 'Hello from GUI client in CGE');
     Exit(true); // key was handled
   end;
+end;
+
+procedure TStateMainMenu.NetworkLog(const Message: String);
+const
+  MaxNetworkLogLines = 5;
+begin
+  LabelNetworkLog.Text.Add(Message);
+  while LabelNetworkLog.Text.Count > MaxNetworkLogLines do
+    LabelNetworkLog.Text.Delete(0);
 end;
 
 end.

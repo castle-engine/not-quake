@@ -3,11 +3,9 @@ unit NetworkCommon;
 
 interface
 
-uses
-  SysUtils,
-  Classes,
-  SyncObjs,
-  RNL;
+uses SysUtils, Classes, SyncObjs,
+  RNL,
+  CastleLog, CastleApplicationProperties;
 
 procedure ConsoleOutput(const s:string);
 procedure FlushConsoleOutput;
@@ -30,6 +28,9 @@ type
       PeerId = -1 means "broadcast to all peers". }
     procedure SendMessage(const PeerId: Integer; const S: String);
   end;
+
+var
+  OnNetworkLog: TLogEvent;
 
 implementation
 
@@ -62,16 +63,20 @@ begin
 end;
 
 procedure FlushConsoleOutput;
-var s:string;
+var
+  s:string;
 begin
- ConsoleOutputLock.Acquire;
- try
-  while ConsoleOutputQueue.Dequeue(s) do begin
-   writeln(s);
+  ConsoleOutputLock.Acquire;
+  try
+    while ConsoleOutputQueue.Dequeue(s) do
+    begin
+      WritelnLog('Network', s);
+      if Assigned(OnNetworkLog) then
+        OnNetworkLog(S);
+    end;
+  finally
+    ConsoleOutputLock.Release;
   end;
- finally
-  ConsoleOutputLock.Release;
- end;
 end;
 
 procedure LogThreadException(const aThreadName:string;const aException:TObject);
@@ -115,18 +120,21 @@ begin
 {$endif}
  ConsoleOutput('Console output: Thread started');
  try
-  while not Terminated do begin
+  while not Terminated do
+  begin
    ConsoleOutputEvent.WaitFor(1000);
-   while not Terminated do begin
+   while not Terminated do
+   begin
     ConsoleOutputLock.Acquire;
     try
-     if not ConsoleOutputQueue.Dequeue(s) then begin
+     if not ConsoleOutputQueue.Dequeue(s) then
       break;
-     end;
     finally
      ConsoleOutputLock.Release;
     end;
-    writeln(s);
+    WritelnLog('Network', s);
+    if Assigned(OnNetworkLog) then
+      OnNetworkLog(S);
    end;
   end;
  except
