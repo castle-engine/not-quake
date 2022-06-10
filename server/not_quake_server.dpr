@@ -129,7 +129,7 @@ begin
         if M.Text = 'Hello world from client!' then
           FreeAndNil(M) // do not broadcast this
         else
-          SendMessage(-1, M);
+          SendMessage(M, true, Event.Peer.LocalPeerID); // broadcast, but not to originating client
        end;
       end;
      finally

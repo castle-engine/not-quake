@@ -18,6 +18,7 @@ type
   TMessage = class
   private
     RecipientPeerId: Integer; //< Only used for messages scheduled to send from this process
+    Broadcast: Boolean; //< Only used for messages scheduled to send from this process
   end;
 
   // TMessagePlayerJoin = class
@@ -61,10 +62,19 @@ type
     Received: TMessageList;
     constructor Create(const aCreateSuspended: Boolean);
     destructor Destroy; override;
+
     { Send a message to remote. M becomes owned by this object.
       Can be used from other thread than this.
-      PeerId = -1 means "broadcast to all peers". }
-    procedure SendMessage(const PeerId: Integer; const M: TMessage);
+
+      When Broadcast then it means it send to all peers.
+      The PeerId in this case indicates the peer to *avoid* sending it to, and can be -1.
+
+      Note that "all peers" for clients is "just server".
+      So this does apply to actual peers to which we talk over the network,
+      not for all participants in the game.
+      The server will broadcast the message further if needed.
+    }
+    procedure SendMessage(const M: TMessage; const Broadcast: Boolean; const RecipientPeerId: Integer);
   end;
 
 var
@@ -166,11 +176,12 @@ begin
   FreeAndNil(ReceivedCs);
 end;
 
-procedure TNetworkingThread.SendMessage(const PeerId: Integer; const M: TMessage);
+procedure TNetworkingThread.SendMessage(const M: TMessage; const Broadcast: Boolean; const RecipientPeerId: Integer);
 begin
   ToSendCs.Acquire;
   try
-    M.RecipientPeerId := PeerId;
+    M.RecipientPeerId := RecipientPeerId;
+    M.Broadcast := Broadcast;
     ToSend.Add(M);
   finally ToSendCs.Release end;
 end;
@@ -180,6 +191,7 @@ var
   Peer: TRNLPeer;
   M: TMessage;
   S: String;
+  Send: Boolean;
 begin
   ToSendCs.Acquire;
   try
@@ -195,9 +207,14 @@ begin
         //ConsoleOutput(Format('Sending "%s" to %d', [S, M.RecipientPeerId]));
 
         for Peer in Host.Peers do
-          if (M.RecipientPeerId = -1) or
-             (M.RecipientPeerId = Peer.LocalPeerID) then
+        begin
+          if M.Broadcast then
+            Send := M.RecipientPeerId <> Peer.LocalPeerID
+          else
+            Send := M.RecipientPeerId = Peer.LocalPeerID;
+          if Send then
             Peer.Channels[0].SendMessageString(S);
+        end;
       end;
       Host.Flush;
       ToSend.Clear;

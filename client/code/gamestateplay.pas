@@ -59,7 +59,7 @@ var
 begin
   M := TMessageChat.Create;
   M.Text := S;
-  Client.SendMessage(-1, M);
+  Client.SendMessage(M, true, -1);
 end;
 
 procedure TStatePlay.Start;
