@@ -28,6 +28,8 @@ type
     { Components designed using CGE editor, loaded from gamestatemainmenu.castle-user-interface. }
     EditNick: TCastleEdit;
     ButtonJoin: TCastleButton;
+    LabelHost: TCastleLabel;
+    LabelVersion: TCastleLabel;
     procedure ClickJoin(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
@@ -43,8 +45,8 @@ var
 implementation
 
 uses SysUtils,
-  CastleWindow,
-  GameStatePlay;
+  CastleWindow, CastleApplicationProperties,
+  GameStatePlay, GameClient;
 
 { TStateMainMenu ----------------------------------------------------------------- }
 
@@ -61,9 +63,13 @@ begin
   { Find components, by name, that we need to access from code }
   EditNick := DesignedComponent('EditNick') as TCastleEdit;
   ButtonJoin := DesignedComponent('ButtonJoin') as TCastleButton;
+  LabelHost := DesignedComponent('LabelHost') as TCastleLabel;
+  LabelVersion := DesignedComponent('LabelVersion') as TCastleLabel;
 
   StateContainer.ForceCaptureInput := EditNick; // make key presses go to edit first
 
+  LabelHost.Caption := 'Host: ' + HostAddress;
+  LabelVersion.Caption := 'Version: ' + ApplicationProperties.Version;
   EditNick.Text := 'Viper' + IntToStr(Random(1000));
   ButtonJoin.OnClick := {$ifdef FPC}@{$endif} ClickJoin;
 end;

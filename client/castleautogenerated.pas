@@ -23,7 +23,7 @@ uses CastleApplicationProperties, CastleWindow, CastleLog;
 initialization
   ApplicationProperties.ApplicationName := 'not-quake';
   ApplicationProperties.Caption := 'Not Quake';
-  ApplicationProperties.Version := '0.1';
+  ApplicationProperties.Version := '1.0.0';
 
   if not IsLibrary then
     Application.ParseStandardParameters;
