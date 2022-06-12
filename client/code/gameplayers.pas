@@ -38,6 +38,7 @@ type
     destructor Destroy; override;
     procedure CreateTransform(const Viewport: TCastleViewport);
     procedure UpdateTransform;
+    function Alive: Boolean;
   end;
 
   TPlayerBehavior = class(TCastleBehavior)
@@ -105,6 +106,11 @@ begin
   Viewport.Items.Add(Transform);
 end;
 
+function TPlayer.Alive: Boolean;
+begin
+  Result := Life > 0;
+end;
+
 procedure TPlayer.UpdateTransform;
 const
   MinSpeedToWalk = 0.01;
@@ -113,14 +119,12 @@ const
   MinSpeedToRun = 7.5;
   TimeToAllowAnimChange = 0.25; // a bit larger than Scene.DefaultAnimationTransition
 var
-  Alive: Boolean;
   Speed: Single;
   NewAnimation: String;
 begin
   if Transform = nil then // LocalPlayer has transform nil
     Exit;
 
-  Alive := Life > 0;
   Transform.Exists := Alive;
   Text.Exists := Alive;
   if Alive then

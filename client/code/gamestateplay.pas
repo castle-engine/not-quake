@@ -391,7 +391,7 @@ begin
 
   if TUIState.CurrentTop = Self then
   begin
-    if Event.IsMouseButton(buttonLeft) then
+    if LocalPlayer.Alive and Event.IsMouseButton(buttonLeft) then
     begin
       HitTransform := MainViewport.TransformUnderMouse;
       if HitTransform <> nil then
