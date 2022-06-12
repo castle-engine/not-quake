@@ -32,7 +32,7 @@ Platforms (using GitHub actions to build everywhere):
 - Linux: client and server
 - Windows: client and server
 - macOS: client (TODO mouse look) and server
-- Android: client (TODO test, probably unplayable due to missing special input code)
+- Android: client (TODO but input and connectivity broken)
 
 Server can run on any plaform and accept connection from client from any platform. I.e. you can run server on Linux and connect from any platform -- Linux, Windows etc.
 
@@ -89,8 +89,11 @@ Compile by entering `client` or `server` and build by:
 
 - Use speed predictions to move other players (will allow to update state less often?). I planned this for gamejam, but didn't manage.
 
-- Test all platforms:
-    - Android client
+- Android:
+    - cannot connect ("Empty Socket") - likely we miss some Android permissions
+    - input nick/chat requires on-screen keyboard
+    - 3D navigation requires TCastleTouchNavigation
+    - actions like "send char", "quit to menu" must be buttons, not only accessible by keys
 
 - Do more network performance testing.
     - There are various timeouts to test. Like BroadcastTimeout, NormalTimeout,
