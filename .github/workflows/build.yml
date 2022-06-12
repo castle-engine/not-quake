@@ -108,6 +108,6 @@ jobs:
         with:
           name: macos-build
           path: |
-            client/*-darwin-x86_64.tar.gz
-            server/*-darwin-x86_64.tar.gz
+            client/*-darwin-x86_64.zip
+            server/*-darwin-x86_64.zip
           if-no-files-found: error
