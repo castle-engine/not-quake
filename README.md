@@ -27,7 +27,14 @@ Client keys:
 
 Done during our gamejam at _Cat-astrophe Games_ on 2022-06-10. **Done in 1 day.**
 
-For desktops -- using GitHub actions to build for Linux, Windows, macOS, and (probably unplayable due to missing special input code) Android.
+Platforms (using GitHub actions to build everywhere):
+
+- Linux: client and server
+- Windows: client and server
+- macOS: client (TODO mouse look) and server
+- Android: client (TODO test, probably unplayable due to missing special input code)
+
+Server can run on any plaform and accept connection from client from any platform. I.e. you can run server on Linux and connect from any platform -- Linux, Windows etc.
 
 ## Architecture
 
@@ -78,11 +85,11 @@ Compile by entering `client` or `server` and build by:
 
 ## TODO
 
+- macOS client: broken mouse look, known CGE missing thing (Cocoa + SetMousePosition and mouse hide)
+
 - Use speed predictions to move other players (will allow to update state less often?). I planned this for gamejam, but didn't manage.
 
 - Test all platforms:
-    - Windows server
-    - macOS client and server
     - Android client
 
 - Do more network performance testing.
