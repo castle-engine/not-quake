@@ -38,7 +38,13 @@ Server can run on any plaform and accept connection from client from any platfor
 
 ## Architecture
 
-Central server on https://michalis.xyz/ (likewise developed using RNL, with some code shared with frontend), I will keep it running throughout the gamejam and probably much longer. Each frontend is just a client to this server.
+Central server. Also developed using RNL. With some code shared with frontend (client). Each frontend is just a client to this server.
+
+You can:
+
+- use the default server. It runs on https://michalis.xyz/ , I (Michalis) will keep it running throughout the gamejam and probably much longer. Ping me on Discord https://castle-engine.io/talk.php if the server seems to be down.
+
+- run your own server. Use the command-line parameter `--host localhost` when running the client (with `localhost` being the name, or IP, of your own server).
 
 You run the game, you input your nick (honestly anything), and you join the game -- essentially one common "room" for all players.
 
