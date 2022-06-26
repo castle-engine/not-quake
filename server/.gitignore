@@ -7,6 +7,8 @@ not-quake-server
 not-quake-server.exe
 # Library files placed alongside Windows executable
 *.dll
+# Auto-updated by CGE tools when compiling Windows build
+castle-auto-generated-resources.res
 
 # May contain secret data (your Android keystore username and password)
-AndroidAntProperties.txt
+AndroidSigningProperties.txt
