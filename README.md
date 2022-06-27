@@ -2,6 +2,10 @@
 
 **Online multi-player first-person shooter using Castle Game Engine and RNL.**
 
+If you just want to download a ready client and play:
+- get it from [release on Itch.io](https://cat-astrophe-games.itch.io/not-quake)
+- or from [release on GitHub](https://github.com/castle-engine/not-quake/releases/latest)
+
 Features:
 
 - Choose your nick,
