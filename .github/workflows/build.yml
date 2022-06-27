@@ -1,9 +1,10 @@
 # ----------------------------------------------------------------------------
-# Modified GH Actions to use
-# - new-cameras branch
-# - build client and server for not-quake.
+# GitHub Action workflow to build using latest Castle Game Engine snapshot
+# for multiple platforms.
 #
-# See https://docs.github.com/en/actions for docs.
+# See https://castle-engine.io/github_actions .
+#
+# Modified the default template to build client and server for not-quake.
 # ----------------------------------------------------------------------------
 
 name: Build
@@ -30,8 +31,8 @@ jobs:
       # https://brandur.org/fragments/github-actions-env-vars-in-env-vars
       - name: Castle Game Engine - Setup environment
         run: echo "CASTLE_ENGINE_PATH=$GITHUB_WORKSPACE/castle-engine" >> $GITHUB_ENV
-      - name: Castle Game Engine - Clone
-        run: git clone --depth 1 --single-branch --branch new-cameras https://github.com/castle-engine/castle-engine/
+      - name: Castle Game Engine - Clone snapshot
+        run: git clone --depth 1 --single-branch --branch snapshot https://github.com/castle-engine/castle-engine/
       - name: Castle Game Engine - Build
         run: cd $CASTLE_ENGINE_PATH/tools/build-tool/ && ./castle-engine_compile.sh
 
@@ -44,9 +45,6 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: windows-build
-          # Note: Keep paths that start with asterisk in double qoutes, to avoid misinterpreting as YAML reference.
-          # See https://stackoverflow.com/questions/19109912/yaml-do-i-need-quotes-for-strings-in-yaml
-          # https://yamlchecker.com/
           path: |
             client/*-win64-x86_64.zip
             server/*-win64-x86_64.zip
@@ -94,8 +92,8 @@ jobs:
           lazarus-version: stable
       - name: Castle Game Engine - Setup environment
         run: echo "CASTLE_ENGINE_PATH=$GITHUB_WORKSPACE/castle-engine" >> $GITHUB_ENV
-      - name: Castle Game Engine - Clone
-        run: git clone --depth 1 --single-branch --branch new-cameras https://github.com/castle-engine/castle-engine/
+      - name: Castle Game Engine - Clone snapshot
+        run: git clone --depth 1 --single-branch --branch snapshot https://github.com/castle-engine/castle-engine/
       - name: Castle Game Engine - Build
         run: cd $CASTLE_ENGINE_PATH/tools/build-tool/ && ./castle-engine_compile.sh
 

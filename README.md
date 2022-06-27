@@ -50,8 +50,6 @@ You run the game, you input your nick (honestly anything), and you join the game
 
 ## Code
 
-Note that it relies on CGE [new-cameras" branch](https://github.com/castle-engine/castle-engine/tree/new-cameras) which is not yet merged to CGE master.
-
 Checkout with submodules.
 
 ```
@@ -77,7 +75,7 @@ castle-engine run -- --host localhost
 
 By default it connects to server on `michalis.xyz` (Michalis Kamburelis private host, see https://michalis.xyz/ ) which I will try to keep running for some time. Ping me (find me on Discord, https://castle-engine.io/talk.php ) if the server seems to be down :)
 
-Using [Castle Game Engine](https://castle-engine.io/).
+Using [Castle Game Engine](https://castle-engine.io/). You can clone it from https://github.com/castle-engine/castle-engine/ . The `master` branch of CGE is OK now.
 
 ## Building
 
