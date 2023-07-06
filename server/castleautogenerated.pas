@@ -21,9 +21,9 @@ implementation
 uses CastleApplicationProperties, CastleWindow, CastleLog;
 
 initialization
-  ApplicationProperties.ApplicationName := 'not-quake';
-  ApplicationProperties.Caption := 'Not Quake';
-  ApplicationProperties.Version := '1.2.0';
+  ApplicationProperties.ApplicationName := 'not-quake-server';
+  ApplicationProperties.Caption := 'not-quake-server';
+  ApplicationProperties.Version := '0.1';
 
   if not IsLibrary then
     Application.ParseStandardParameters;
