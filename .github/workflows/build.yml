@@ -21,25 +21,16 @@ jobs:
   build-using-docker:
     name: Build Using Docker
     runs-on: ubuntu-latest
-    container: kambi/castle-engine-cloud-builds-tools:cge-none
+    container: kambi/castle-engine-cloud-builds-tools:cge-unstable
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-      # Set env CASTLE_ENGINE_PATH following
-      # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#environment-files
-      # https://brandur.org/fragments/github-actions-env-vars-in-env-vars
-      - name: Castle Game Engine - Setup environment
-        run: echo "CASTLE_ENGINE_PATH=$GITHUB_WORKSPACE/castle-engine" >> $GITHUB_ENV
-      - name: Castle Game Engine - Clone snapshot
-        run: git clone --depth 1 --single-branch --branch snapshot https://github.com/castle-engine/castle-engine/
-      - name: Castle Game Engine - Build
-        run: cd $CASTLE_ENGINE_PATH/tools/build-tool/ && ./castle-engine_compile.sh
 
       - name: Package Windows Client
-        run: cd client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=win64 --cpu=x86_64 --verbose
+        run: cd client/ && castle-engine package --os=win64 --cpu=x86_64 --verbose
       - name: Package Windows Server
-        run: cd server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=win64 --cpu=x86_64 --verbose
+        run: cd server/ && castle-engine package --os=win64 --cpu=x86_64 --verbose
       - name: Archive Artifacts
         # See https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v3
@@ -51,9 +42,9 @@ jobs:
           if-no-files-found: error
 
       - name: Package Linux Client
-        run: cd client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=linux --cpu=x86_64 --verbose
+        run: cd client/ && castle-engine package --os=linux --cpu=x86_64 --verbose
       - name: Package Linux Server
-        run: cd server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=linux --cpu=x86_64 --verbose
+        run: cd server/ && castle-engine package --os=linux --cpu=x86_64 --verbose
       - name: Archive Artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -64,10 +55,10 @@ jobs:
           if-no-files-found: error
 
       - name: Package Android Client
-        run: cd client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --target=android --verbose
+        run: cd client/ && castle-engine package --target=android --verbose
       # We'd need some UI for Android server
       # - name: Package Android Server
-      #   run: cd server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --target=android --verbose
+      #   run: cd server/ && castle-engine package --target=android --verbose
       - name: Archive Artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -90,17 +81,20 @@ jobs:
         uses: gcarreno/setup-lazarus@v3.0.16
         with:
           lazarus-version: stable
-      - name: Castle Game Engine - Setup environment
+
+      - name: Castle Game Engine - Env CASTLE_ENGINE_PATH
         run: echo "CASTLE_ENGINE_PATH=$GITHUB_WORKSPACE/castle-engine" >> $GITHUB_ENV
+      - name: Castle Game Engine - Env PATH (non-Windows)
+        run: echo "PATH=$PATH:$CASTLE_ENGINE_PATH/tools/build-tool/" >> $GITHUB_ENV
       - name: Castle Game Engine - Clone snapshot
         run: git clone --depth 1 --single-branch --branch snapshot https://github.com/castle-engine/castle-engine/
       - name: Castle Game Engine - Build
         run: cd $CASTLE_ENGINE_PATH/tools/build-tool/ && ./castle-engine_compile.sh
 
       - name: Package macOS Client
-        run: cd client/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=darwin --cpu=x86_64 --verbose
+        run: cd client/ && castle-engine package --os=darwin --cpu=x86_64 --verbose
       - name: Package macOS Server
-        run: cd server/ && $CASTLE_ENGINE_PATH/tools/build-tool/castle-engine package --os=darwin --cpu=x86_64 --verbose
+        run: cd server/ && castle-engine package --os=darwin --cpu=x86_64 --verbose
       - name: Archive Artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -109,3 +103,40 @@ jobs:
             client/*-darwin-x86_64.zip
             server/*-darwin-x86_64.zip
           if-no-files-found: error
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    # Only upload release if all builds, on all runners, succeeded.
+    needs: [build-using-docker, build-macos]
+    steps:
+    - name: Download packaged releases
+      uses: actions/download-artifact@v4
+      with:
+        merge-multiple: true
+    - name: List downloaded files
+      run: ls -R
+    - name: GH CLI status
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh auth status
+    # Releases files in the "snapshot" release.
+    - name: Release Artifacts
+      if: ${{ github.ref == 'refs/heads/master' }}
+      run: gh release --repo ${{ github.repository }} upload snapshot --clobber *.zip *.tar.gz *.apk
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+  update-release-tag:
+    name: Update Release Tag (make snapshot tag point to the build commit on master branch)
+    runs-on: ubuntu-latest
+    needs: [release]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Update Release Tag
+      if: ${{ github.ref == 'refs/heads/master' }}
+      run: |
+        # --force allows to overwrite previous tag
+        git tag --force snapshot
+        # --force allows to push with overwritten tag
+        git push --force origin snapshot
