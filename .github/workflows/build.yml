@@ -78,7 +78,7 @@ jobs:
         with:
           submodules: recursive
       - name: Install FPC+Lazarus
-        uses: gcarreno/setup-lazarus@v3.0.16
+        uses: gcarreno/setup-lazarus@v3.2.17
         with:
           lazarus-version: stable
 
