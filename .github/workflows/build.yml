@@ -59,6 +59,7 @@ jobs:
           ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
           ANDROID_SIGNING_PROPERTIES: ${{ secrets.ANDROID_SIGNING_PROPERTIES }}
         run: |
+          cd client
           echo "$ANDROID_KEYSTORE" | base64 --decode > cge.keystore
           echo "$ANDROID_SIGNING_PROPERTIES" | sed -e "s|WORKSPACE|${GITHUB_WORKSPACE}|" - > AndroidSigningProperties.txt
       - name: Package Android Client
