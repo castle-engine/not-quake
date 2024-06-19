@@ -54,6 +54,13 @@ jobs:
             server/*-linux-x86_64.tar.gz
           if-no-files-found: error
 
+      - name: Unpack Android Secrets
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          ANDROID_SIGNING_PROPERTIES: ${{ secrets.ANDROID_SIGNING_PROPERTIES }}
+        run: |
+          echo "$ANDROID_KEYSTORE" | base64 --decode > cge.keystore
+          echo "$ANDROID_SIGNING_PROPERTIES" | sed -e "s|WORKSPACE|${GITHUB_WORKSPACE}|" - > AndroidSigningProperties.txt
       - name: Package Android Client
         run: cd client/ && castle-engine package --target=android --verbose
       # We'd need some UI for Android server
