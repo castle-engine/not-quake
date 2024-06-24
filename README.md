@@ -33,10 +33,13 @@ Done during our gamejam at _Cat-astrophe Games_ on 2022-06-10. **Done in 1 day.*
 
 Platforms (using GitHub actions to build everywhere):
 
-- Linux: client and server
-- Windows: client and server
-- macOS: client (TODO mouse look) and server
-- Android: client (TODO but input and connectivity broken)
+- Linux: client and server.
+
+- Windows: client and server.
+
+- macOS: client and server. But note that there are some critical issues with macOS client: mouse look is broken (see TODO section below).
+
+- Android: client. But note that there are some critical issues with Android version: it cannot connect (ERNLHost, "Empty Socket" error -- likely on RNL side), also not optimal UI on mobile (see TODO section below).
 
 Server can run on any plaform and accept connection from client from any platform. I.e. you can run server on Linux and connect from any platform -- Linux, Windows etc.
 

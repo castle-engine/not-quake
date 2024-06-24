@@ -131,7 +131,9 @@ jobs:
     # Releases files in the "snapshot" release.
     - name: Release Artifacts
       if: ${{ github.ref == 'refs/heads/master' }}
-      run: gh release --repo ${{ github.repository }} upload snapshot --clobber client/*.zip client/*.tar.gz client/*.apk server/*.zip server/*.tar.gz
+      # Not uploading: client/*.apk
+      # because too much things don't work -- RNL cannot connect.
+      run: gh release --repo ${{ github.repository }} upload snapshot --clobber client/*.zip client/*.tar.gz server/*.zip server/*.tar.gz
       env:
         GH_TOKEN: ${{ github.token }}
 
