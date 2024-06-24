@@ -61,7 +61,7 @@ jobs:
         run: |
           cd client
           echo "$ANDROID_KEYSTORE" | base64 --decode > cge.keystore
-          echo "$ANDROID_SIGNING_PROPERTIES" | sed -e "s|WORKSPACE|${GITHUB_WORKSPACE}|" - > AndroidSigningProperties.txt
+          echo "$ANDROID_SIGNING_PROPERTIES" | sed -e "s|WORKSPACE|${GITHUB_WORKSPACE}/client/|" - > AndroidSigningProperties.txt
       - name: Package Android Client
         run: cd client/ && castle-engine package --target=android --verbose
       # We'd need some UI for Android server
