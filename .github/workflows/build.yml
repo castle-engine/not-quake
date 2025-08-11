@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     container: kambi/castle-engine-cloud-builds-tools:cge-unstable
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -82,7 +82,7 @@ jobs:
     name: Build Using macOS
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - name: Install FPC+Lazarus
@@ -142,7 +142,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [release]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Update Release Tag
       if: ${{ github.ref == 'refs/heads/master' }}
       run: |
