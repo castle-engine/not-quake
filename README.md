@@ -63,6 +63,8 @@ Checkout with submodules.
 git clone --recurse-submodules https://github.com/castle-engine/not-quake
 ```
 
+NOTE: If you forgot to clone with submodules (maybe you just did a regular `git clone` without `--recurse-submodules` out of habit), then you can later run `git submodule update --init --recursive` to get the submodules.
+
 Build and run server:
 
 ```

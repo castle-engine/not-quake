@@ -242,8 +242,9 @@ const
 var
   Server:TServer;
 begin
+  LogTimePrefix := ltDateTime;
   // write to stdout, regardless of platform, even on Windows
-  InitializeLog(StdOutStream, ltDateTime);
+  InitializeLog(StdOutStream);
 
   RNLInstance:=TRNLInstance.Create;
   try
