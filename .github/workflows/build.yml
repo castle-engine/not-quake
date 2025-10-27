@@ -80,15 +80,13 @@ jobs:
   # This means to build for macOS and (maybe in the future) iOS.
   build-macos:
     name: Build Using macOS
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v5
         with:
           submodules: recursive
-      - name: Install FPC+Lazarus
-        uses: gcarreno/setup-lazarus@v3.3.1
-        with:
-          lazarus-version: stable
+      - name: Install FPC (using HomeBrew)
+        run: brew install fpc
 
       - name: Castle Game Engine - Env CASTLE_ENGINE_PATH
         run: echo "CASTLE_ENGINE_PATH=$GITHUB_WORKSPACE/castle-engine" >> $GITHUB_ENV
