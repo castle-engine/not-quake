@@ -117,7 +117,7 @@ jobs:
     needs: [build-using-docker, build-macos]
     steps:
     - name: Download packaged releases
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         merge-multiple: true
     - name: List downloaded files
